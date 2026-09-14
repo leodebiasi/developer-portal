@@ -1,0 +1,26 @@
+---
+title: "SPB"
+description: "Fachada REST do Sistema de Pagamentos Brasileiro: operações, STR, long polling e auditoria."
+---
+
+O **ONZ SPB** conecta a instituição ao Banco Central pela Rede do Sistema Financeiro Nacional (RSFN). Em um contrato REST você envia, recebe e audita mensagens SPB com rastreabilidade e idempotência.
+
+![Fluxo do ONZ SPB](/images/spb-architecture.png)
+
+## Ciclo de uma mensagem
+
+1. **Envio** — `POST /api/v1/operations` (payload SPB cru) ou `POST /api/v1/operations/:evento` (ex.: `STR0007`, `STR0008`).
+2. **Despacho** — a plataforma valida, cifra e entrega ao BCB pela RSFN (IBM MQ).
+3. **Resposta assíncrona** — o BCB devolve o retorno quando estiver pronto.
+4. **Entrega** — `GET /longpolling/v1/messages/:pullNext` mantém a conexão aberta até a próxima mensagem.
+
+## O que está na spec
+
+- Criação e ciclo de vida de operações
+- Long polling de respostas
+- STR (limites, validações condicionais)
+- Transações, extratos, saldos e participantes
+- Certificados de assinatura SPB
+- Auditoria e arquivos
+
+A referência gerada a partir de `openapi/spb.yaml` está na aba **Referência**.

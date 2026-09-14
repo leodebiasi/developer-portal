@@ -1,0 +1,37 @@
+---
+title: "Consultar saldo FGTS"
+description: "Consulta as informações de saldo FGTS do trabalhador na Dataprev. Exige autorização com status ACCEPTED."
+---
+Consulta as informações de saldo FGTS do trabalhador na Dataprev. Exige autorização com status `ACCEPTED`.
+
+**Endpoint:** `POST /econsigado/employee/fgts-balance-inquiries`  
+**Scope:** `econsignado.read`
+
+Use o tipo de inscrição do empregador, o número da inscrição e a matrícula retornados no lead:
+
+- `employer_registration_type`: `1`=CNPJ, `2`=CPF, `3`=CAEPF, `4`=CNO
+- `employer_registration_number`: número de inscrição do empregador
+- `employee_registration`: matrícula do trabalhador, enviada como `employee_id`
+
+```bash
+curl --location 'https://secureapi.onz.finance/api/v2/econsigado/employee/fgts-balance-inquiries' \
+  --header 'Authorization: Bearer <access_token>' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "cpf": "12345678901",
+    "employer_registration_type": 1,
+    "employer_registration_number": "12345678000199",
+    "employee_id": "12345"
+  }'
+```
+
+| Campo | Obrigatório | Descrição |
+| --- | --- | --- |
+| `cpf` | Sim | CPF do trabalhador |
+| `employer_registration_type` | Sim | Código do tipo de inscrição do empregador |
+| `employer_registration_number` | Sim | Número de inscrição do empregador |
+| `employee_id` | Sim | Matrícula do trabalhador |
+
+A resposta inclui campos como `valor_saldo_disponivel_consignado` e `valor_multa_rescisoria_consignado`.
+
+> Para montar uma proposta com garantias, use o `requested_guarantee` retornado na listagem de leads. A Dataprev valida a proposta contra o que o trabalhador declarou na solicitação.

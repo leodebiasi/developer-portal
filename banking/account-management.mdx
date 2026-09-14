@@ -1,0 +1,295 @@
+---
+title: "Account Management"
+description: "Este guia apresenta o fluxo completo para gerenciar contas bancárias através da API, desde a criação até consultas e atualizações."
+---
+Este guia apresenta o fluxo completo para gerenciar contas bancárias através da API, desde a criação até consultas e atualizações.
+
+## 📋 Visão Geral
+
+Nesta jornada, você aprenderá a:
+
+1. ✅ Listar contas com filtros e paginação
+2. ✅ Consultar detalhes de uma conta específica
+3. ✅ Entender os diferentes status de conta
+4. ✅ Trabalhar com paginação e filtros avançados
+
+## 🎯 Cenário de Uso
+
+Imagine que você precisa:
+
+- Listar todas as contas ativas de um cliente
+- Consultar os detalhes de uma conta específica
+- Filtrar contas por tipo ou status
+
+## 📝 Passo 1: Listar Contas
+
+### Requisição Básica
+
+```bash
+curl -X GET "https://secureapi.onz.finance/accounts" \
+  -H "Authorization: Bearer SEU_TOKEN" \
+  -H "Content-Type: application/json"
+```
+
+### Com Paginação
+
+```bash
+curl -X GET "https://secureapi.onz.finance/accounts?page=1&perPage=20" \
+  -H "Authorization: Bearer SEU_TOKEN"
+```
+
+### Com Filtros
+
+```bash
+# Filtrar por status ativo
+curl -X GET "https://secureapi.onz.finance/accounts?status=ACTIVE&page=1&perPage=10" \
+  -H "Authorization: Bearer SEU_TOKEN"
+
+# Filtrar por tipo de conta
+curl -X GET "https://secureapi.onz.finance/accounts?type=CACC&page=1" \
+  -H "Authorization: Bearer SEU_TOKEN"
+
+# Buscar por número de conta
+curl -X GET "https://secureapi.onz.finance/accounts?number=00001" \
+  -H "Authorization: Bearer SEU_TOKEN"
+```
+
+### Resposta
+
+```json
+{
+  "meta": {
+    "page": 1,
+    "perPage": 10,
+    "total": 150,
+    "totalPages": 15
+  },
+  "data": [
+    {
+      "id": "123",
+      "number": "00001",
+      "type": "CACC",
+      "baasId": "2c1a9f3e-8b7d-4c2a-9e1f-3a5b7c9d1e2f",
+      "status": 1,
+      "person": {
+        "document": "12345678900",
+        "name": "João Silva",
+        "type": "NATURAL_PERSON"
+      },
+      "createdAt": "2025-01-01T00:00:00Z",
+      "updatedAt": "2025-01-15T10:30:00Z",
+      "closedAt": null
+    }
+  ]
+}
+```
+
+## 📝 Passo 2: Consultar Conta Específica
+
+### Requisição
+
+```bash
+curl -X GET "https://secureapi.onz.finance/accounts/123" \
+  -H "Authorization: Bearer SEU_TOKEN"
+```
+
+### Resposta
+
+```json
+{
+  "id": "123",
+  "number": "00001",
+  "type": "CACC",
+  "baasId": "2c1a9f3e-8b7d-4c2a-9e1f-3a5b7c9d1e2f",
+  "status": 1,
+  "person": {
+    "document": "12345678900",
+    "name": "João Silva",
+    "type": "NATURAL_PERSON"
+  },
+  "createdAt": "2025-01-01T00:00:00Z",
+  "updatedAt": "2025-01-15T10:30:00Z",
+  "closedAt": null
+}
+```
+
+## 📊 Entendendo os Status
+
+| Código | Status    | Descrição                  |
+| ------ | --------- | -------------------------- |
+| `0`    | INACTIVE  | Conta inativa              |
+| `1`    | ACTIVE    | Conta ativa e operacional  |
+| `7`    | BLOCKED   | Conta bloqueada            |
+| `8`    | SUSPENDED | Conta suspensa             |
+| `9`    | CLOSED    | Conta encerrada            |
+| `99`   | PENDING   | Conta pendente de ativação |
+
+## 📊 Tipos de Conta
+
+| Código | Tipo            | Descrição      |
+| ------ | --------------- | -------------- |
+| `CACC` | Current Account | Conta corrente |
+| `SVGS` | Savings         | Poupança       |
+| `SLRY` | Salary          | Salário        |
+| `TRAN` | Transaction     | Transacional   |
+
+## 🔍 Filtros Disponíveis
+
+### Parâmetros de Query
+
+| Parâmetro   | Tipo   | Descrição                       | Exemplo             |
+| ----------- | ------ | ------------------------------- | ------------------- |
+| `page`      | number | Número da página (inicia em 1)  | `?page=1`           |
+| `perPage`   | number | Itens por página (máx 100)      | `?perPage=20`       |
+| `filter`    | string | Busca textual (número da conta) | `?filter=00001`     |
+| `baasId`    | string | Restringe às contas de um parceiro BaaS (UUID) | `?baasId=2c1a...` |
+| `number`    | string | Filtro exato por número         | `?number=00001`     |
+| `type`      | string | Tipo de conta                   | `?type=CACC`        |
+| `status`    | string | Status da conta                 | `?status=ACTIVE`    |
+| `sortBy`    | string | Campo para ordenação            | `?sortBy=createdAt` |
+| `sortOrder` | string | Ordem (asc/desc)                | `?sortOrder=desc`   |
+
+### Exemplo: Busca Completa
+
+```bash
+curl -X GET "https://secureapi.onz.finance/accounts?status=ACTIVE&type=CACC&page=1&perPage=50&sortBy=createdAt&sortOrder=desc" \
+  -H "Authorization: Bearer SEU_TOKEN"
+```
+
+## 💻 Exemplo Completo em Node.js
+
+```typescript
+import axios from 'axios';
+import https from 'https';
+import { readFileSync } from 'fs';
+
+const API_BASE_URL = 'https://secureapi.onz.finance';
+const CLIENT_ID = 'seu-client-id';
+const CLIENT_SECRET = 'seu-client-secret';
+const httpsAgent = new https.Agent({
+  cert: readFileSync(process.env.CERT_PATH!),
+  key: readFileSync(process.env.KEY_PATH!),
+  ca: readFileSync(process.env.CA_PATH!),
+});
+
+// 1. Obter token
+async function getToken() {
+  const response = await axios.post(
+    `${API_BASE_URL}/auth/token`,
+    {
+      grant_type: 'client_credentials',
+      client_id: CLIENT_ID,
+      client_secret: CLIENT_SECRET,
+    },
+    {
+      headers: { 'Content-Type': 'application/json' },
+      httpsAgent,
+    },
+  );
+  return response.data.access_token;
+}
+
+// 2. Listar contas
+async function listAccounts(
+  token: string,
+  filters?: {
+    page?: number;
+    perPage?: number;
+    status?: string;
+    type?: string;
+  },
+) {
+  const params = new URLSearchParams();
+  if (filters?.page) params.append('page', filters.page.toString());
+  if (filters?.perPage) params.append('perPage', filters.perPage.toString());
+  if (filters?.status) params.append('status', filters.status);
+  if (filters?.type) params.append('type', filters.type);
+
+  const response = await axios.get(
+    `${API_BASE_URL}/accounts?${params.toString()}`,
+    {
+      headers: { Authorization: `Bearer ${token}` },
+      httpsAgent,
+    },
+  );
+  return response.data;
+}
+
+// 3. Consultar conta específica
+async function getAccount(token: string, accountId: string) {
+  const response = await axios.get(
+    `${API_BASE_URL}/accounts/${accountId}`,
+    {
+      headers: { Authorization: `Bearer ${token}` },
+      httpsAgent,
+    },
+  );
+  return response.data;
+}
+
+// Uso
+(async () => {
+  try {
+    const token = await getToken();
+
+    // Listar contas ativas
+    const accounts = await listAccounts(token, {
+      status: 'ACTIVE',
+      page: 1,
+      perPage: 20,
+    });
+    console.log('Contas ativas:', accounts);
+
+    // Consultar conta específica
+    const account = await getAccount(token, '123');
+    console.log('Detalhes da conta:', account);
+  } catch (error) {
+    console.error('Erro:', error.response?.data || error.message);
+  }
+})();
+```
+
+## ⚠️ Tratamento de Erros
+
+### Conta Não Encontrada (404)
+
+```json
+{
+  "type": "https://secureapi.onz.finance/errors/account-not-found",
+  "title": "Account Not Found",
+  "status": 404,
+  "detail": "Account with ID 123 not found",
+  "correlationId": "550e8400-e29b-41d4-a716-446655440000"
+}
+```
+
+### Parâmetro Inválido (400)
+
+```json
+{
+  "type": "https://secureapi.onz.finance/errors/invalid-parameter",
+  "title": "Invalid Parameter",
+  "status": 400,
+  "detail": "Account ID must be a positive number",
+  "correlationId": "550e8400-e29b-41d4-a716-446655440000"
+}
+```
+
+## ✅ Checklist de Implementação
+
+- [ ] Implementar obtenção de token
+- [ ] Implementar listagem de contas com paginação
+- [ ] Implementar consulta de conta específica
+- [ ] Adicionar filtros conforme necessário
+- [ ] Implementar tratamento de erros
+- [ ] Adicionar logs com correlation ID
+- [ ] Implementar cache de token (opcional)
+- [ ] Adicionar retry logic para requisições
+
+## 🔄 Próximos Passos
+
+Agora que você sabe gerenciar contas, explore:
+
+1. **[Balance Flow](/banking/balance-flow)** - Como consultar saldos e movimentações
+2. **[Gerenciar Pessoas](/banking/people-management)** - Cadastro e gestão de pessoas
+3. **[Errors & Retries](/banking/errors-and-retries)** - Tratamento de erros e boas práticas

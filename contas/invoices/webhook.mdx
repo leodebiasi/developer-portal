@@ -1,0 +1,53 @@
+---
+title: "Webhook INVOICE"
+description: "Cadastre a URL com o tipo INVOICE. O cadastro continua na API de Contas (BancoDigitalAPI); a entrega dos eventos é feita pelo processador de webhooks."
+---
+Cadastre a URL com o tipo `INVOICE`. O cadastro continua na API de Contas (BancoDigitalAPI); a entrega dos eventos é feita pelo processador de webhooks.
+
+**Endpoint:** `POST /webhooks/invoice`  
+**Scope:** `webhook.write`
+
+```bash
+curl --location 'https://secureapi.onz.finance/api/v2/webhooks/invoice' \
+  --header 'Authorization: Bearer <access_token>' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "uri": "https://parceiro.exemplo.com/hooks/invoices",
+    "enabled": true
+  }'
+```
+
+O path `invoice` é case-insensitive (`INVOICE` também vale). Comportamento de retentativa é o mesmo dos demais webhooks da API de Contas. Veja [Configurando Webhook](/contas/webhook-api-contas).
+
+## Eventos
+
+O corpo enviado ao parceiro:
+
+```json
+{
+  "type": "invoice.paid",
+  "data": {
+    "invoiceId": 42,
+    "txId": "abc123",
+    "status": "COMPLETED",
+    "paymentMethod": "PIX_BOLETO",
+    "amount": 150.9,
+    "dueDate": "2026-08-20T03:00:00.000Z",
+    "description": "Mensalidade agosto",
+    "customer": {
+      "name": "Maria Silva",
+      "document": "***.456.789-**"
+    }
+  }
+}
+```
+
+| `type` | Quando |
+| --- | --- |
+| `invoice.registered` | Cobrança registrada (Pix emitido ou boleto confirmado pela Núclea) |
+| `invoice.paid` | Pagamento identificado |
+| `invoice.settled` | Liquidação concluída |
+| `invoice.cancelled` | Cobrança cancelada |
+| `invoice.overdue` | Cobrança vencida |
+
+O documento do pagador chega mascarado. Deduplicação usa a combinação da integração com a referência `invoice-{invoiceId}-{evento}`.

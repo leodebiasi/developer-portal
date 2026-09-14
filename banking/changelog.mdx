@@ -1,0 +1,95 @@
+---
+title: "Changelog"
+description: "Todas as mudanças notáveis nesta API serão documentadas neste arquivo."
+---
+Todas as mudanças notáveis nesta API serão documentadas neste arquivo.
+
+O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
+e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
+
+## [Unreleased]
+
+### Modificado
+
+- Simplificação de rotas: removido o prefixo `/public/gw_banking/v1/` de todos os endpoints
+- Endpoint de autenticação unificado em `POST /auth/token` (removido endpoint legado Keycloak)
+- Documentação atualizada para refletir os novos paths simplificados
+- Nas listagens de `transactions`, `movements` e `infractions`, `startDate` e `endDate` passam a ser **obrigatórios** (enviados juntos) com intervalo máximo de **30 dias**
+
+### Adicionado
+
+- CRUD de regras de débito automático em `/fee-rules` (scopes `fee-rules.read` / `fee-rules.write`, credencial BAAS)
+- CRUD de usuários do portal BaaS em `/baas-users` (scopes `baas-users.read` / `baas-users.write`, Keycloak realm `baas`)
+- Endpoint `PUT /baas-users/{id}/permissions` para roles do client `api-baas` e access groups
+- Endpoint `GET /baas` para listar parceiros BaaS, incluindo a conta principal (`baasAccountId`/`baasAccountNumber`) e o `status` derivado da conta principal
+- Filtro `baasId` nas listagens de `accounts`, `people`, `transactions`, `movements`, `infractions` e `refunds`
+- Filtros `accountId`, `startDate` e `endDate` nas listagens de `transactions`, `movements`, `infractions` e `refunds`
+- Campo `baasId` nas respostas de `accounts` e `people`
+- Campos `ownedAccountIds` e `permittedAccountIds` no detalhe de pessoa (`GET /people/{id}`)
+- Documentação inicial da API
+- Guias de integração
+- Suporte a OAuth2 Client Credentials
+- Suporte a mTLS
+
+### Removido
+
+- Campo `previousBalance` das respostas de movimentações (`GET /movements` e `GET /movements/{id}`)
+
+## [1.0.0] - 2025-01-XX
+
+### Adicionado
+
+- Endpoint `POST /auth/token` para autenticação via client credentials + mTLS
+- Endpoint `GET /accounts/{id}` para consultar conta
+- Endpoint `GET /accounts/{id}/balance` para consultar saldo
+- Endpoint `GET /accounts` para listar contas
+- Endpoint `GET /people/{id}` para consultar pessoa
+- Endpoint `GET /people` para listar pessoas
+- Padrão de erro RFC7807
+- Suporte a Correlation ID
+- Rate limiting (1000 req/min, 10000 req/hora)
+
+### Segurança
+
+- Autenticação OAuth2 Client Credentials
+- Suporte a mTLS (mutual TLS)
+- Validação de JWT tokens
+
+---
+displayed_sidebar: bankingApiSidebar
+
+## Formato de Versão
+
+Este projeto usa [Semantic Versioning](https://semver.org/lang/pt-BR/):
+
+- **MAJOR** (X.0.0): Mudanças incompatíveis na API
+- **MINOR** (0.X.0): Novas funcionalidades compatíveis
+- **PATCH** (0.0.X): Correções de bugs compatíveis
+
+## Tipos de Mudanças
+
+- **Adicionado**: Novas funcionalidades
+- **Modificado**: Mudanças em funcionalidades existentes
+- **Depreciado**: Funcionalidades que serão removidas
+- **Removido**: Funcionalidades removidas
+- **Corrigido**: Correções de bugs
+- **Segurança**: Correções de vulnerabilidades
+
+## Exemplo de Entrada
+
+```markdown
+## [1.1.0] - 2025-02-15
+
+### Adicionado
+
+- Novo endpoint para transferências
+- Suporte a webhooks
+
+### Modificado
+
+- Endpoint de saldo agora retorna informações adicionais
+
+### Corrigido
+
+- Correção no cálculo de saldo bloqueado
+```

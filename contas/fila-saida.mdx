@@ -1,0 +1,16 @@
+---
+title: "Fila de Saída"
+description: "Caso todas as fichas do balde sejam usadas, o usuário ficará temporariamente impossibilitado de realizar as consultas de chaves, ocasionando um rate limit. Será necessário aguardar…"
+---
+## O que é a Fila de Saída?
+A Fila de Saída é o local onde constam todas as transações de débito (cash-out) do ambiente. Uma transação pode permanecer na fila de saída caso as fichas do CNPJ estejam baixas, ou devido a problemas gerais adicionais. Quando o processo de transação ocorre sem intercorrências, o ciclo normal consiste em passar pela Fila de Saída, Core e por fim o SPI.
+
+Caso todas as fichas do balde sejam usadas, o usuário ficará temporariamente impossibilitado de realizar as consultas de chaves, ocasionando um rate limit. Será necessário aguardar até que as fichas retornem para o balde de forma progressiva. É importante compreender que, durante o período em que o rate limit estiver ocorrendo, a operação poderá apresentar oscilações ou atrasos até que as fichas sejam normalizadas no balde.
+
+Outro motivo pelo qual uma transação pode "parar" na fila de saída é a detecção de alguma anomalia pelo sistema antifraude relacionada ao CPF envolvido na transação, que pode estar vinculado a registros de fraude. Caso essa situação ocorra, o payload do webhook apresentará a seguinte mensagem: "Transação não autorizada".
+
+### Fichas
+Para toda transação de cash-out é necessário fazer a validação dos dados e chave do usuário recebedor, ou seja, é gasta uma ficha, pois é feita a validação desta ficha direto no BACEN.
+
+### Balde
+Balde é o local onde ficam armazenadas as fichas disponíveis. Cada cliente possui seu balde de fichas para cada instituição bancária. Exemplo: O documento 999.999.999-99 (CPF) contém 100 fichas na instituição “A” e mais 100 fichas na instituição “B”.

@@ -1,0 +1,28 @@
+---
+title: "Configurando Webhook"
+description: "Cada chave Pix receptora pode ter um webhook associado. A configuração da URL de callback utilizada pelo webhook é feita da seguinte forma"
+---
+Cada chave Pix receptora pode ter um webhook associado.  
+A configuração da URL de callback utilizada pelo webhook é feita da seguinte forma:
+
+```ts
+curl --location --request PUT 'https://pix.onz.finance/webhook/{partner_pix_key}' \
+    --header 'Content-Type: application/json' \
+    --header 'Authorization: Bearer eyJhbGc...' \
+    --data {
+        "webhookUrl": "{partner_callback_url}"
+    }
+```
+
+Onde:
+
+- partner_pix_key: Chave Pix para a qual a cobrança foi criada, esta chave Pix pode ser gerada pelo portal [Finance] (#)
+- partner_callback_url: URL de callback fornecida pelo parceiro para receber a solicitação POST com os dados da cobrança liquidada ou os dados do reembolso de uma cobrança.
+
+### Retenção de Dados de Webhooks
+
+Os webhooks são simples notificações que informam sobre eventos específicos em tempo real. Os dados enviados através dos webhooks têm um período de retenção definido de até 15 dias. Durante esse período, é possível acessar as notificações conforme necessário. Os webhooks com mais de 15 dias não serão reenviados.
+
+Para consultar informações que excedam esse prazo, é possível [Consultar Pix recebidos](../../reference/qrcodes#tag/Pix/paths/~1pix/get). Essa abordagem permite o acesso contínuo a dados importantes, mesmo após o término do período de retenção dos webhooks.
+
+Essas diretrizes visam otimizar a eficiência dos sistemas de notificação, garantindo acesso contínuo às informações relevantes e mantendo a eficácia dos processos de comunicação.

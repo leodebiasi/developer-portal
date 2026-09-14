@@ -1,0 +1,35 @@
+---
+title: "Ambiente Sandbox"
+description: "O ambiente sandbox é uma versão simulada do ambiente de produção onde o cliente irá operar. Neste ambiente, o parceiro pode testar suas integrações e processos antes de colocá-los…"
+---
+O ambiente sandbox é uma versão simulada do ambiente de produção onde o cliente irá operar. Neste ambiente, o parceiro pode testar suas integrações e processos antes de colocá-los em produção. As transações simuladas não envolvem movimentação de dinheiro real, mas permitem garantir que tudo ocorrerá conforme o esperado quando a integração for realizada em produção.
+
+<Note>
+Sandbox da API de Contas: `https://secureapi.bancodigital.hmg.onz.software/api/v2`. Host de produção de QRCodes: `https://pix.onz.finance` (sandbox de QRCodes é informado no onboarding). Banking: use o host da credencial CORE em HMG.
+</Note>
+
+Neste ambiente, você pode simular as seguintes operações:
+
+### API de QR Codes
+
+- Criação de cobranças imediatas
+- Criação de cobranças com datas de vencimento
+- Consulta de Pix recebido (pagamento instantâneo)
+
+### API de Contas
+
+- Consulta de transações
+- Consulta de saldo
+- Transferência QR Code Pix
+- Transferência Pix por chave Pix
+- Transferência Pix por dados bancários
+- Pagamento de boletos bancários
+- Consulta de infrações
+- Criação de defesa para infrações
+
+O ambiente sandbox segue as mesmas regras e especificações do ambiente de produção, permitindo ao parceiro certificar sua solução e evitar falhas que possam impactar negativamente sua operação. É uma infraestrutura completamente separada do ambiente de produção, significando que os dados (valores, chaves, identificadores, etc.) não são válidos fora dele, e vice-versa.
+
+### TL;DR:
+- O ambiente sandbox simula o ambiente real de produção.
+- Segue as mesmas regras e especificações do ambiente de produção.
+- Não se comunica com o ambiente de produção.

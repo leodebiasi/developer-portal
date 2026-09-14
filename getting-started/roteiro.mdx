@@ -1,0 +1,39 @@
+---
+title: "Roteiro de sugestão de integração"
+description: "- O certificado digital está sendo usado na conexão? - O tempo de expiração do token está sendo observado? - Foi desenvolvida uma estratégia de cache para uso do token dentro do pe…"
+---
+# 1. Autenticação
+
+- O certificado digital está sendo usado na conexão?
+- O tempo de expiração do token está sendo observado?
+- Foi desenvolvida uma estratégia de cache para uso do token dentro do período de validade?
+- A estratégia de cache respeita a arquitetura da plataforma que está sendo integrada (arquitetura distribuída com múltiplas instâncias, por exemplo)?
+- A segurança do token foi levada em consideração?
+- Existem medidas apropriadas para lidar com possíveis falhas de autenticação?
+
+# 2. Webhook
+
+- A URL de retorno opera exclusivamente no protocolo HTTPS?
+- Foram definidas medidas para mitigar um potencial ataque DoS direcionado à URL de callback?
+- Falhas no processo são tratadas e relatadas de forma adequada?
+- Existe uma estratégia de monitoramento e registro em vigor?
+
+# 3. Cobranças e Pagamentos
+
+- O token de autorização está sendo consumido do cache?
+- O certificado digital está sendo usado na conexão?
+- O status da cobrança/pagamento está sendo validado?
+- O txId/e2eId está sendo armazenado como meio de associação?
+
+# 4. Consultas
+
+- O token de autorização está sendo consumido do cache?
+- O certificado digital está sendo usado na conexão?
+- Existe reembolso na transação que está sendo consultada?
+- O valor do pagamento está sendo validado?
+
+# 5. Conformidade
+
+- O limite de tokens está sendo respeitado?
+- O número de operações por minuto está dentro do intervalo esperado?
+- O número de consultas de operação Pix é igual ao número de cobranças criadas?

@@ -1,0 +1,15 @@
+overlay: 1.0.0
+info:
+  title: Accounts servers
+  version: 1.0.0
+extends: ../openapi/accounts.yaml
+actions:
+  - target: $.servers
+    remove: true
+  - target: $
+    update:
+      servers:
+        - url: https://secureapi.onz.finance/api/v2
+          description: Produção
+        - url: https://secureapi.bancodigital.hmg.onz.software/api/v2
+          description: Sandbox

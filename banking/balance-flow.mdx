@@ -1,0 +1,355 @@
+---
+title: "Balance Flow"
+description: "Este guia apresenta o fluxo completo de consulta de saldo na Banking API, desde a autenticação até a recepção da resposta."
+---
+Este guia apresenta o fluxo completo de consulta de saldo na Banking API, desde a autenticação até a recepção da resposta.
+
+## Visão Geral
+
+O fluxo de consulta de saldo é simples e direto:
+
+```
+┌─────────────────────┐
+│ Instituição         │
+│ Parceira            │
+│ (Seu Sistema)       │
+└──────────┬──────────┘
+           │
+           │ 1. Autenticar (client credentials + mTLS)
+           │    POST /auth/token
+           │
+           │ 2. Consultar Saldo
+           │    GET /accounts/{id}/balance
+           │    (com token Bearer)
+           │
+           │ 3. Receber Resposta
+           │    JSON com dados do saldo
+           │
+           ▼
+```
+
+## Fluxo Passo a Passo
+
+### Passo 1: Autenticação
+
+Primeiro, você precisa obter um token de acesso usando sua credencial e o certificado vinculado a ela.
+
+```bash
+curl -X POST https://secureapi.onz.finance/auth/token \
+  --cert client.crt \
+  --key client.key \
+  --cacert ca.crt \
+  -H "Content-Type: application/json" \
+  -d '{
+    "grant_type": "client_credentials",
+    "client_id": "seu-client-id",
+    "client_secret": "seu-client-secret"
+  }'
+```
+
+**Resposta:**
+
+```json
+{
+  "access_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token_type": "Bearer",
+  "expires_in": 3600
+}
+```
+
+> **Importante**: Guarde o `access_token`. Você precisará dele para todas as requisições.
+
+### Passo 2: Consultar Saldo
+
+Com o token em mãos, faça a requisição para consultar o saldo de uma conta.
+
+```bash
+curl -X GET "https://secureapi.onz.finance/accounts/123/balance" \
+  --cert client.crt \
+  --key client.key \
+  --cacert ca.crt \
+  -H "Authorization: Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..." \
+  -H "x-correlation-id: 550e8400-e29b-41d4-a716-446655440000"
+```
+
+### Passo 3: Receber Resposta
+
+A API retorna os dados do saldo em formato JSON.
+
+**Resposta de Sucesso (200):**
+
+```json
+{
+  "accountId": "123",
+  "balance": {
+    "available": 1500.5,
+    "current": 2000.0,
+    "blocked": 500.5
+  },
+  "currency": "BRL",
+  "lastUpdated": "2025-11-19T10:30:00Z"
+}
+```
+
+#### Entendendo a Resposta
+
+| Campo               | Tipo   | Descrição                                   |
+| ------------------- | ------ | ------------------------------------------- |
+| `accountId`         | string | Identificador da conta consultada           |
+| `balance.available` | number | Saldo disponível para transações            |
+| `balance.current`   | number | Saldo total atual da conta                  |
+| `balance.blocked`   | number | Valor bloqueado (retenções, garantias, etc) |
+| `currency`          | string | Moeda (BRL = Real Brasileiro)               |
+| `lastUpdated`       | string | Timestamp da última atualização (ISO 8601)  |
+
+#### Fórmula do Saldo
+
+```
+available = current - blocked
+```
+
+No exemplo acima: `1500.50 = 2000.00 - 500.50`
+
+## Exemplo Completo
+
+### Implementação em Node.js
+
+```typescript
+import axios from 'axios';
+import https from 'https';
+import { readFileSync } from 'fs';
+
+class BalanceService {
+  constructor(
+    private apiBaseUrl: string,
+    private clientId: string,
+    private clientSecret: string,
+    private certPath?: string,
+    private keyPath?: string,
+  ) {}
+
+  private getHttpsAgent() {
+    if (!this.certPath || !this.keyPath) return undefined;
+
+    return new https.Agent({
+      cert: readFileSync(this.certPath),
+      key: readFileSync(this.keyPath),
+    });
+  }
+
+  private async getToken(): Promise<string> {
+    const response = await axios.post(
+      `${this.apiBaseUrl}/auth/token`,
+      {
+        grant_type: 'client_credentials',
+        client_id: this.clientId,
+        client_secret: this.clientSecret,
+      },
+      {
+        headers: { 'Content-Type': 'application/json' },
+        httpsAgent: this.getHttpsAgent(),
+      },
+    );
+
+    return response.data.access_token;
+  }
+
+  async getBalance(accountId: string): Promise<BalanceResponse> {
+    // 1. Obter token
+    const token = await this.getToken();
+
+    // 2. Fazer requisição
+    const response = await axios.get(
+      `${this.apiBaseUrl}/accounts/${accountId}/balance`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'x-correlation-id': this.generateCorrelationId(),
+        },
+        httpsAgent: this.getHttpsAgent(),
+      },
+    );
+
+    // 3. Retornar resposta
+    return response.data;
+  }
+
+  private generateCorrelationId(): string {
+    return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  }
+}
+
+interface BalanceResponse {
+  accountId: string;
+  balance: {
+    available: number;
+    current: number;
+    blocked: number;
+  };
+  currency: string;
+  lastUpdated: string;
+}
+
+// Uso
+const service = new BalanceService(
+  'https://secureapi.onz.finance',
+  process.env.CLIENT_ID!,
+  process.env.CLIENT_SECRET!,
+  process.env.CERT_PATH,
+  process.env.KEY_PATH,
+);
+
+const balance = await service.getBalance('123');
+console.log('Saldo:', balance);
+```
+
+## Tratamento de Respostas
+
+### Resposta de Sucesso (200)
+
+```json
+{
+  "accountId": "123",
+  "balance": {
+    "available": 1500.5,
+    "current": 2000.0,
+    "blocked": 500.5
+  },
+  "currency": "BRL",
+  "lastUpdated": "2025-11-19T10:30:00Z"
+}
+```
+
+### Resposta de Erro (404)
+
+Quando a conta não é encontrada:
+
+```json
+{
+  "type": "https://secureapi.onz.finance/errors/account-not-found",
+  "title": "Account Not Found",
+  "status": 404,
+  "detail": "Account with ID 123 not found",
+  "correlationId": "550e8400-e29b-41d4-a716-446655440000"
+}
+```
+
+### Resposta de Erro (401)
+
+Quando o token é inválido ou expirou:
+
+```json
+{
+  "type": "https://secureapi.onz.finance/errors/unauthorized",
+  "title": "Unauthorized",
+  "status": 401,
+  "detail": "Token is invalid or expired",
+  "correlationId": "550e8400-e29b-41d4-a716-446655440000"
+}
+```
+
+**Solução**: Obtenha um novo token e repita a requisição.
+
+## Rastreamento com Correlation ID
+
+Todas as requisições devem incluir um `x-correlation-id` no header. Este ID é usado para rastrear a requisição e facilitar o suporte e debug.
+
+### Como Usar
+
+```typescript
+const correlationId = crypto.randomUUID();
+
+const response = await axios.get(
+  `${apiBaseUrl}/accounts/123/balance`,
+  {
+    headers: {
+      'x-correlation-id': correlationId,
+      Authorization: `Bearer ${token}`,
+    },
+  },
+);
+
+// Guarde o correlationId para debug
+console.log('Correlation ID:', correlationId);
+```
+
+### Benefícios
+
+- **Debug**: Rastreie requisições em logs
+- **Suporte**: Forneça o ID ao reportar problemas
+- **Monitoramento**: Correlacione métricas e erros
+
+## Boas Práticas
+
+### 1. Cache de Token
+
+Implemente cache de token para evitar requisições desnecessárias:
+
+```typescript
+class TokenCache {
+  private token: string | null = null;
+  private expiresAt: number = 0;
+
+  async getToken(fetchFn: () => Promise<string>): Promise<string> {
+    // Renovar 5 minutos antes de expirar
+    if (this.token && Date.now() < this.expiresAt - 5 * 60 * 1000) {
+      return this.token;
+    }
+
+    this.token = await fetchFn();
+    this.expiresAt = Date.now() + 3600 * 1000; // 1 hora
+    return this.token;
+  }
+}
+```
+
+### 2. Retry Logic
+
+Implemente retry para requisições que falharam:
+
+```typescript
+async function getBalanceWithRetry(accountId: string, maxRetries = 3) {
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      return await getBalance(accountId);
+    } catch (error) {
+      if (attempt === maxRetries - 1) throw error;
+
+      // Backoff exponencial
+      await new Promise((resolve) =>
+        setTimeout(resolve, Math.pow(2, attempt) * 1000),
+      );
+    }
+  }
+}
+```
+
+### 3. Validação de Resposta
+
+Sempre valide a resposta antes de usar:
+
+```typescript
+interface BalanceResponse {
+  accountId: string;
+  balance: {
+    available: number;
+    current: number;
+    blocked: number;
+  };
+  currency: string;
+  lastUpdated: string;
+}
+
+function validateBalanceResponse(data: any): BalanceResponse {
+  if (!data.accountId || !data.balance) {
+    throw new Error('Invalid balance response');
+  }
+  return data as BalanceResponse;
+}
+```
+
+## Próximos Passos
+
+- **[Errors & Retries](/banking/errors-and-retries)** - Como tratar erros neste fluxo
+- **[Getting Started](/banking/getting-started)** - Voltar ao básico
+- **[Account Management](/banking/account-management)** - Gerenciar contas

@@ -1,55 +1,35 @@
-# Mintlify Starter Kit
+# ONZ Developers (POC Mintlify)
 
-Use the starter kit to get your docs deployed and ready to customize.
+POC do portal de desenvolvedores em [Mintlify](https://mintlify.com), migrado de [developers.onz.software](https://developers.onz.software) (Docusaurus + Redocusaurus).
 
-Click the green **Use this template** button at the top of this repo to copy the Mintlify starter kit. The starter kit contains examples with
+O conteúdo de produção **continua** no portal atual até a POC ser avaliada.
 
-- Guide pages
-- Navigation
-- Customizations
-- API reference pages
-- Use of popular components
+## O que esta POC cobre
 
-**[Follow the full quickstart guide](https://starter.mintlify.com/quickstart)**
+- Guias em MDX (primeiros passos, QRCodes, Contas, Banking, CloudPix, SPB, Onboarding, Cash)
+- OpenAPI em `openapi/` com overlays de `servers` reais (sem `api.example.com`)
+- Skills em `.mintlify/skills/` (`onz-auth`, `onz-qrcodes`, `onz-pix-pay`, `onz-invoices`, `onz-baas-onboarding`)
+- Navegação por produto em `docs.json`
 
-## AI-assisted writing
+Mintlify gera `llms.txt`, páginas `.md` e MCP a partir deste repo.
 
-Set up your AI coding tool to work with Mintlify:
+## Preview local
 
 ```bash
-npx skills add https://mintlify.com/docs
-```
-
-This command installs Mintlify's documentation skill for your configured AI tools like Claude Code, Cursor, Windsurf, and others. The skill includes component reference, writing standards, and workflow guidance.
-
-See the [AI tools guides](/ai-tools) for tool-specific setup.
-
-## Development
-
-Install the [Mintlify CLI](https://www.npmjs.com/package/mint) to preview your documentation changes locally. To install, use the following command:
-
-```
 npm i -g mint
-```
-
-Run the following command at the root of your documentation, where your `docs.json` is located:
-
-```
 mint dev
 ```
 
-View your local preview at `http://localhost:3000`.
+Abre em `http://localhost:3000`.
 
-## Publishing changes
+```bash
+mint validate
+```
 
-Install our GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app) to propagate changes from your repo to your deployment. Changes are deployed to production automatically after pushing to the default branch.
+## Publicar
 
-## Need help?
+Instale o GitHub App da Mintlify no dashboard e faça push em `main`. O domínio da POC fica no dashboard (não substitui `developers.onz.software` por enquanto).
 
-### Troubleshooting
+## Fonte
 
-- If your dev environment isn't running: Run `mint update` to ensure you have the most recent version of the CLI.
-- If a page loads as a 404: Make sure you are running in a folder with a valid `docs.json`.
-
-### Resources
-- [Mintlify documentation](https://mintlify.com/docs)
+Markdown e specs vieram de `developers.onz.software`. O script `scripts/migrate.py` foi o conversor one-shot e **não deve ser reexecutado** — as páginas de índice, overlays e hosts foram ajustados depois da conversão.

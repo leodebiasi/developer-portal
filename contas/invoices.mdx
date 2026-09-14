@@ -1,0 +1,23 @@
+---
+title: "Cobranças Pix e boleto"
+description: "Emissão de cobranças Pix, boleto e híbridas pela API de Contas, com cadastro de pagadores e webhook INVOICE."
+---
+
+Emissão de cobrança **Pix, boleto ou híbrida (`PIX_BOLETO`)** pela API de Contas. Não é a API Pix Bacen (`/cob`, `/cobv`) — essa está em [QRCodes](/qrcodes/jornada-cobranca).
+
+Host: `https://secureapi.onz.finance/api/v2`. Escopos: `invoices.read` / `invoices.write`. Criação exige `x-idempotency-key` (máximo 50 caracteres). `pixKey` é obrigatória quando o método inclui Pix. Credencial BaaS envia `x-account-id`.
+
+<CardGroup cols={2}>
+  <Card title="Jornada" href="/contas/invoices/jornada" icon="route">
+    Do pagador à liquidação, incluindo rascunho e emissão.
+  </Card>
+  <Card title="Cobranças" href="/contas/invoices/cobrancas" icon="file-invoice">
+    Criar, listar, emitir e cancelar invoices.
+  </Card>
+  <Card title="Pagadores" href="/contas/invoices/pagadores" icon="user">
+    Cadastro de customers usados nas cobranças.
+  </Card>
+  <Card title="Webhook INVOICE" href="/contas/invoices/webhook" icon="bell">
+    Eventos `invoice.*` — documento do pagador chega mascarado.
+  </Card>
+</CardGroup>

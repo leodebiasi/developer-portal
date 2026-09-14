@@ -1,0 +1,365 @@
+openapi: '3.1.0'
+info:
+  title: Onboarding API
+  version: ''
+  description: |
+    API for creating account onboarding in the ONZ platform.
+
+    This API allows account creation for:
+    - Natural Person (NATURAL_PERSON)
+    - Legal Person (LEGAL_PERSON)
+
+servers:
+  - url: https://secureapi.bancodigital.hmg.onz.software/api/v2
+
+paths:
+  /onboarding:
+    post:
+      tags:
+        - Onboarding
+      summary: Create new onboarding
+      description: Endpoint for creating account onboarding in the platform
+      operationId: createOnboarding
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: '#/components/schemas/NaturalPersonOnboarding'
+                - $ref: '#/components/schemas/LegalPersonOnboarding'
+
+      responses:
+        '201':
+          description: Onboarding created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OnboardingResponse'
+              example:
+                message: 'Onboarding created successfully'
+                id: '4fdd34d2-e9fa-4bb5-bfeb-84281f77f19a'
+                status: 1
+
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorRFC7807'
+
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorRFC7807'
+
+        '422':
+          description: Unprocessable entity
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorRFC7807'
+
+  /onboarding/{id}/images:
+    post:
+      tags:
+        - Onboarding
+      summary: Upload onboarding images
+      description: |
+        This endpoint allows uploading identification documents and a selfie for a previously created onboarding process.
+
+        Accepted image types:
+        - Front of the document (FRONT) – The front side of the identification document.
+        - Back of the document (BACK) – The back side of the identification document.
+        - Selfie (SELFIE) – A clear photo of the person's face.
+      operationId: uploadOnboardingImage
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Onboarding ID
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - type
+                - file
+              properties:
+                type:
+                  type: string
+                  enum: [FRONT, BACK, SELFIE]
+                  description: Type of the image being uploaded
+                file:
+                  type: string
+                  format: binary
+                  description: Image file (JPG or PNG, max 10MB)
+            examples:
+              front:
+                summary: Upload front document image
+                value:
+                  type: 'FRONT'
+                  file: '(binary)'
+              back:
+                summary: Upload back document image
+                value:
+                  type: 'BACK'
+                  file: '(binary)'
+              selfie:
+                summary: Upload selfie image
+                value:
+                  type: 'SELFIE'
+                  file: '(binary)'
+
+      responses:
+        '200':
+          description: Image uploaded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImageUploadResponse'
+              examples:
+                front:
+                  summary: Front document image uploaded
+                  value:
+                    image:
+                      type: 'FRONT'
+                      url: 'https://example.com/onboarding/38005732-ab00-4e7d-87c0-5835edc1ed65/front.png?{signedUrl}'
+                back:
+                  summary: Back document image uploaded
+                  value:
+                    image:
+                      type: 'BACK'
+                      url: 'https://example.com/onboarding/38005732-ab00-4e7d-87c0-5835edc1ed65/back.png?{signedUrl}'
+                selfie:
+                  summary: Selfie image uploaded
+                  value:
+                    image:
+                      type: 'SELFIE'
+                      url: 'https://example.com/onboarding/38005732-ab00-4e7d-87c0-5835edc1ed65/selfie.png?{signedUrl}'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorRFC7807'
+              examples:
+                invalidParams:
+                  summary: Invalid request parameters
+                  value:
+                    type: 'onz-0002'
+                    title: 'Invalid request'
+                    status: 400
+                    detail: 'Validation error messages'
+                    instance: '/api/onboarding/{id}/images'
+                invalidFileType:
+                  summary: Invalid file type
+                  value:
+                    type: 'onz-0002'
+                    title: 'Invalid file type'
+                    status: 400
+                    detail: 'The uploaded file must be an image in JPG or PNG format'
+                    instance: '/api/onboarding/{id}/images'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorRFC7807'
+        '404':
+          description: Onboarding not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorRFC7807'
+              example:
+                type: 'onz-0025'
+                title: 'Onboarding not found'
+                status: 404
+                detail: 'Onboarding not found'
+                instance: '/api/onboarding/{id}/images'
+
+components:
+  schemas:
+    Address:
+      type: object
+      required:
+        - zipCode
+        - address
+        - number
+        - district
+      properties:
+        zipCode:
+          type: string
+          description: Zip code
+          example: '89900000'
+        address:
+          type: string
+          description: Street address
+          example: 'Itaberaba Street'
+        number:
+          type: string
+          description: Number
+          example: '1070'
+        complement:
+          type: string
+          description: Complement
+          example: 'Room 304'
+        district:
+          type: string
+          description: District
+          example: 'Downtown'
+
+    Person:
+      type: object
+      required:
+        - name
+        - document
+        - email
+        - phone
+        - address
+      properties:
+        name:
+          type: string
+          description: Full name
+          example: 'John Smith'
+        socialName:
+          type: string
+          description: Social name
+          example: 'Johnny'
+        document:
+          type: string
+          description: CPF (numbers only)
+          pattern: '^[0-9]{11}$'
+          example: '55389012704'
+        email:
+          type: string
+          format: email
+          example: 'test@test.com'
+        phone:
+          type: string
+          example: '49999464580'
+        address:
+          $ref: '#/components/schemas/Address'
+
+    Company:
+      type: object
+      required:
+        - name
+        - document
+        - email
+        - phone
+      properties:
+        name:
+          type: string
+          description: Company legal name
+          example: 'Smith Association LLC'
+        tradeName:
+          type: string
+          description: Trade name
+          example: 'Smith Association'
+        document:
+          type: string
+          description: CNPJ (numbers only)
+          pattern: '^[0-9]{14}$'
+          example: '72592151000197'
+        email:
+          type: string
+          format: email
+          example: 'test@test.com'
+        phone:
+          type: string
+          example: '(11) 91111-1111'
+
+    NaturalPersonOnboarding:
+      type: object
+      required:
+        - accountType
+        - person
+      properties:
+        accountType:
+          type: string
+          enum: [NATURAL_PERSON]
+        person:
+          $ref: '#/components/schemas/Person'
+
+    LegalPersonOnboarding:
+      type: object
+      required:
+        - accountType
+        - person
+        - company
+      properties:
+        accountType:
+          type: string
+          enum: [LEGAL_PERSON]
+        person:
+          $ref: '#/components/schemas/Person'
+        company:
+          $ref: '#/components/schemas/Company'
+
+    OnboardingResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: 'Onboarding created successfully'
+        id:
+          type: string
+          format: uuid
+          example: '4fdd34d2-e9fa-4bb5-bfeb-84281f77f19a'
+        status:
+          type: integer
+          example: 1
+
+    ErrorRFC7807:
+      type: object
+      properties:
+        type:
+          type: string
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
+
+    ImageUploadResponse:
+      type: object
+      required:
+        - image
+      properties:
+        image:
+          type: object
+          required:
+            - type
+            - url
+          properties:
+            type:
+              type: string
+              enum: [FRONT, BACK, SELFIE]
+            url:
+              type: string
+              format: uri
+              description: Signed URL to access the uploaded image
+
+  securitySchemes:
+    OAuth2:
+      type: oauth2
+      flows:
+        clientCredentials:
+          tokenUrl: /oauth/token
+          scopes:
+            baas.onboarding.write: Permite criar onboardings no BaaS
+
+security:
+  - OAuth2: ['baas.onboarding.write']

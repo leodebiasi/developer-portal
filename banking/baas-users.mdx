@@ -1,0 +1,172 @@
+---
+title: "BaaS Users"
+description: "Gerencie os usuários do portal do parceiro BaaS (mesmo fluxo do portal em /management/users/list)."
+---
+Gerencie os usuários do portal do parceiro BaaS (mesmo fluxo do portal em `/management/users/list`).
+
+A identidade canônica é o **Keycloak** (realm `baas`, client `api-baas`). O atributo `baasId` do usuário isola o tenant. A Banking API também mantém um espelho leve na tabela local `User` do banco BaaS (usado no login do portal).
+
+## Pré-requisitos
+
+- Credencial com `credential_type = BAAS`
+- Scopes:
+  - `baas-users.read` — listar e consultar
+  - `baas-users.write` — criar, atualizar, excluir e gerir permissões
+
+## Endpoints
+
+| Método | Path | Scope | Descrição |
+| ------ | ---- | ----- | --------- |
+| `GET` | `/baas-users` | `baas-users.read` | Lista paginada |
+| `GET` | `/baas-users/{id}` | `baas-users.read` | Detalhe + roles + groups |
+| `POST` | `/baas-users` | `baas-users.write` | Criar |
+| `PUT` | `/baas-users/{id}` | `baas-users.write` | Atualizar perfil/senha |
+| `DELETE` | `/baas-users/{id}` | `baas-users.write` | Excluir |
+| `PUT` | `/baas-users/{id}/permissions` | `baas-users.write` | Substituir roles e groups |
+
+## Listar usuários
+
+```bash
+curl -X GET "https://secureapi.onz.finance/baas-users?page=1&perPage=20&filter=ana" \
+  -H "Authorization: Bearer SEU_TOKEN" \
+  --cert client.pem --key client.key
+```
+
+O `filter` busca em `username`, `email` e `name`.
+
+### Resposta
+
+```json
+{
+  "meta": {
+    "total": 1,
+    "perPage": 20,
+    "currentPage": 1,
+    "firstPage": 1,
+    "lastPage": 1,
+    "nextPage": null,
+    "prevPage": null
+  },
+  "data": [
+    {
+      "id": "7f1c58a3-1234-4abc-8def-0123456789ab",
+      "username": "ana.silva",
+      "email": "ana@parceiro.com",
+      "name": "Ana Silva",
+      "firstName": "Ana",
+      "lastName": "Silva"
+    }
+  ]
+}
+```
+
+## Criar usuário
+
+```bash
+curl -X POST "https://secureapi.onz.finance/baas-users" \
+  -H "Authorization: Bearer SEU_TOKEN" \
+  -H "Content-Type: application/json" \
+  --cert client.pem --key client.key \
+  -d '{
+    "email": "ana@parceiro.com",
+    "username": "ana.silva",
+    "firstName": "Ana",
+    "lastName": "Silva",
+    "password": "SenhaForte123"
+  }'
+```
+
+### Resposta `201`
+
+```json
+{
+  "userId": "7f1c58a3-1234-4abc-8def-0123456789ab"
+}
+```
+
+O usuário é criado no Keycloak com:
+
+- `attributes.baasId = <baas_id do token>`
+- role inicial `api-baas` no client `api-baas`
+
+A senha **não** é retornada na resposta e **não** é logada.
+
+## Consultar usuário
+
+```bash
+curl -X GET "https://secureapi.onz.finance/baas-users/{id}" \
+  -H "Authorization: Bearer SEU_TOKEN" \
+  --cert client.pem --key client.key
+```
+
+### Resposta
+
+```json
+{
+  "user": {
+    "id": "7f1c58a3-1234-4abc-8def-0123456789ab",
+    "username": "ana.silva",
+    "email": "ana@parceiro.com",
+    "name": "Ana Silva",
+    "firstName": "Ana",
+    "lastName": "Silva"
+  },
+  "groups": [
+    { "id": 12, "groupName": "Operações" }
+  ],
+  "permissions": [
+    "api-baas",
+    "feerule.read",
+    "feerule.write"
+  ]
+}
+```
+
+## Atualizar usuário
+
+```bash
+curl -X PUT "https://secureapi.onz.finance/baas-users/{id}" \
+  -H "Authorization: Bearer SEU_TOKEN" \
+  -H "Content-Type: application/json" \
+  --cert client.pem --key client.key \
+  -d '{
+    "email": "ana.nova@parceiro.com",
+    "firstName": "Ana",
+    "lastName": "Souza",
+    "password": "NovaSenhaForte123"
+  }'
+```
+
+Todos os campos do body são opcionais. `username` não é alterável.
+
+## Atualizar permissões
+
+```bash
+curl -X PUT "https://secureapi.onz.finance/baas-users/{id}/permissions" \
+  -H "Authorization: Bearer SEU_TOKEN" \
+  -H "Content-Type: application/json" \
+  --cert client.pem --key client.key \
+  -d '{
+    "accessPermissions": ["api-baas", "feerule.read", "feerule.write"],
+    "accessGroups": ["12", "34"]
+  }'
+```
+
+- `accessPermissions`: conjunto final de roles do client `api-baas` (substitui o anterior)
+- `accessGroups`: ids numéricos dos access groups; no Keycloak viram grupos `access-group-{id}`
+
+## Excluir usuário
+
+```bash
+curl -X DELETE "https://secureapi.onz.finance/baas-users/{id}" \
+  -H "Authorization: Bearer SEU_TOKEN" \
+  --cert client.pem --key client.key
+```
+
+Resposta: `204 No Content`. Remove o usuário do Keycloak e o espelho local no banco BaaS.
+
+## Isolamento e segurança
+
+- Credenciais `ACCOUNT` recebem `403`
+- Usuários de outro `baasId` não são acessíveis (`403`/`404`)
+- Nunca envie senhas em logs, webhooks ou tickets

@@ -1,0 +1,28 @@
+---
+title: "Configurando Token de acesso"
+description: "Uma vez obtido o token de acesso, você pode utilizá-lo para autenticar chamadas a API durante o período de validade especificado no campo \"expiresin\" da resposta"
+---
+### Solicitação do Token de Acesso
+> **Lembrando** que antes é necessário [configurar o certificado MTLS](/getting-started/perguntas-frequentes#configurando-certificado-mtls).
+
+Uma vez obtido o token de acesso, você pode utilizá-lo para autenticar chamadas a API durante o período de validade especificado no campo "expires_in" da resposta
+
+### Requisição
+```ts
+curl --location 'https://secureapi.onz.finance/api/v2/oauth/token' \
+    --header 'Content-Type: application/x-www-form-urlencoded' \
+    --data-urlencode 'client_id=<your_client_id>' \
+    --data-urlencode 'client_secret=<your_client_secret>' \
+    --data-urlencode 'grant_type=client_credentials' \
+```
+
+### Resposta
+```ts
+{
+    "access_token": "eyJhbGciOi...",
+    "expires_at": 1723829414,
+    "refresh_expires_in": 0,
+    "token_type": "Bearer",
+    "scope": "pix.read billets.read infractions.write api-account billets.create webhook.read billets.write infractions.read pix.write pix.create webhook.write transactions.read account.read invoices.read invoices.write"
+}
+```

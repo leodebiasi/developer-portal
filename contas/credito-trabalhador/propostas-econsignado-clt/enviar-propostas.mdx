@@ -1,0 +1,131 @@
+---
+title: "Enviar propostas"
+description: "Endpoint: POST /econsigado/employee/clt-leads/{id}/proposal Scope: econsignado.write"
+---
+**Endpoint:** `POST /econsigado/employee/clt-leads/{id}/proposal`  
+**Scope:** `econsignado.write`
+
+O body é `{ "proposals": [...] }` com uma ou duas propostas. O `proposal_request_id` não deve ser enviado: ele é obtido automaticamente do lead.
+
+`proposal_valid_until` usa o formato Dataprev `ddMMyyyyHHmmss`, no horário de Brasília.
+
+## Cenários aceitos
+
+| `requires_guarantees` do lead | O que enviar |
+| --- | --- |
+| `false` | Uma proposta com `has_guarantees: false` |
+| `true` | Duas propostas no mesmo request: uma com `has_guarantees: false` e outra com `has_guarantees: true` |
+
+## Lead sem garantias
+
+```bash
+curl --location 'https://secureapi.onz.finance/api/v2/econsigado/employee/clt-leads/550e8400-e29b-41d4-a716-446655440000/proposal' \
+  --header 'Authorization: Bearer <access_token>' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "proposals": [
+      {
+        "proposal_number": "PROP0001",
+        "proposal_valid_until": "30072026235959",
+        "installments_count": 24,
+        "installment_amount": 250.00,
+        "released_amount": 5000.00,
+        "loan_amount": 5200.00,
+        "iof_amount": 15.00,
+        "annual_rate": 18.00,
+        "annual_cet": 21.00,
+        "monthly_rate": 1.50,
+        "monthly_cet": 1.75,
+        "contacts": [
+          { "type": 1, "contact": "trabalhador@exemplo.com" }
+        ],
+        "has_guarantees": false
+      }
+    ]
+  }'
+```
+
+Os campos de garantia são recusados nesse cenário.
+
+## Lead com garantias
+
+As duas propostas precisam ter `proposal_number` distintos. A convenção é repetir o número da primeira com o sufixo `B`.
+
+```bash
+curl --location 'https://secureapi.onz.finance/api/v2/econsigado/employee/clt-leads/550e8400-e29b-41d4-a716-446655440000/proposal' \
+  --header 'Authorization: Bearer <access_token>' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "proposals": [
+      {
+        "proposal_number": "PROP0001",
+        "proposal_valid_until": "30072026235959",
+        "installments_count": 24,
+        "installment_amount": 250.00,
+        "released_amount": 4000.00,
+        "loan_amount": 4000.00,
+        "iof_amount": 15.00,
+        "annual_rate": 18.00,
+        "annual_cet": 21.00,
+        "monthly_rate": 1.50,
+        "monthly_cet": 1.75,
+        "contacts": [
+          { "type": 1, "contact": "trabalhador@exemplo.com" }
+        ],
+        "has_guarantees": false
+      },
+      {
+        "proposal_number": "PROP0001B",
+        "proposal_valid_until": "30072026235959",
+        "installments_count": 24,
+        "installment_amount": 235.00,
+        "released_amount": 4000.00,
+        "loan_amount": 4000.00,
+        "iof_amount": 15.00,
+        "annual_rate": 14.00,
+        "annual_cet": 16.50,
+        "monthly_rate": 1.10,
+        "monthly_cet": 1.30,
+        "contacts": [
+          { "type": 1, "contact": "trabalhador@exemplo.com" }
+        ],
+        "has_guarantees": true,
+        "fgts_guarantee_balance": 1000,
+        "severance_penalty_guarantee_amount": 3000
+      }
+    ]
+  }'
+```
+
+## Valores de garantia
+
+Os valores de garantia não são escolha da instituição. O trabalhador declara o que oferece na solicitação, e a proposta precisa espelhar o `requested_guarantee` do lead.
+
+Envie apenas os campos não nulos. No exemplo acima, `severance_guarantee_percentage` é `null`, portanto não consta no body.
+
+A Dataprev também valida se a soma das garantias cobre o empréstimo e se o saldo FGTS não excede o declarado.
+
+## Resposta
+
+```json
+{
+  "lead": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "status": "PROPOSAL_SENT",
+    "proposal_sent_by_me": true
+  },
+  "dataprev_response": [{}, {}]
+}
+```
+
+## Erros relevantes
+
+| HTTP | Situação |
+| --- | --- |
+| `403` | Conta não habilitada para o eConsignado |
+| `404` | Lead não encontrado |
+| `409` | Já existe proposta para este lead |
+| `422` | Lead expirado |
+| `422` | Lead exige garantias e foi enviada somente a proposta sem garantias |
+| `422` | Garantia informada que o trabalhador não ofereceu, ou garantia oferecida e omitida |
+| `422` | Valores de garantia divergentes do declarado pela solicitação |

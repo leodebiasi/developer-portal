@@ -1,0 +1,39 @@
+---
+title: "Enviar autorização FGTS"
+description: "Envia ao trabalhador o link para autorizar a consulta das informações do FGTS na Dataprev."
+---
+Envia ao trabalhador o link para autorizar a consulta das informações do FGTS na Dataprev.
+
+**Endpoint:** `POST /econsigado/employee/authorization-request-email`  
+**Scope:** `econsignado.write`
+
+```bash
+curl --location 'https://secureapi.onz.finance/api/v2/econsigado/employee/authorization-request-email' \
+  --header 'Authorization: Bearer <access_token>' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "cpf": "12345678901",
+    "email": "trabalhador@exemplo.com",
+    "name": "Maria Silva"
+  }'
+```
+
+| Campo | Obrigatório | Descrição |
+| --- | --- | --- |
+| `cpf` | Sim | CPF do trabalhador, com 11 dígitos |
+| `email` | Sim | E-mail que receberá o link de autorização |
+| `name` | Sim | Nome do trabalhador |
+
+## Resposta
+
+```json
+{
+  "data": {
+    "mensagem": "E-mail de autorização enviado.",
+    "authorization_url": "https://.../econsignado/authorization/...",
+    "expires_at": "2026-07-30T20:00:00.000Z"
+  }
+}
+```
+
+O trabalhador deve acessar o link e aceitar ou recusar o termo antes que ele expire.

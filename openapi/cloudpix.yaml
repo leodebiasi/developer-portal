@@ -1,0 +1,3117 @@
+openapi: 3.0.3
+info:
+  title: CloudPix API
+  description: Neste documento estão disponíveis todas as informações relativas à interface de comunicação necessárias para efetuar transações e consultas ICOM, além de comunicação com o DICT no ambiente de gestão da ONZ PIX.<br>O endpoint deverá ser solicitado via e-mail <mail>suporte@onz.software</mail> informando o IP que será utilizado para ter acesso a API.<br>Para acessar a API é necessário estar com o Certificado Instalado (PFX) que será fornecido juntamente com o EndPoint.<br><br><b>Importante:</b> Informamos que todos os requests com excessão do login, necessitam conter o parâmetro `ONZ-Token` no header, caso contrário a API retornará o Status `401 - Unauthorized`.
+  version: ''
+servers: []
+tags:
+  - name: ICOM
+    description: Requests para interação com a Interface de Comunicação (ICOM)
+  - name: DICT-Chaves
+    description: Requests para interação com o Diretório de Identificadores de Contas Transacionais (DICT)
+  - name: DICT-Estatísticas
+    description: Requests para interação com o Diretório de Identificadores de Contas Transacionais (DICT)
+  - name: DICT-QRCodes
+    description: Requests para interação com o Diretório de Identificadores de Contas Transacionais (DICT)
+  - name: DICT-Antifraude
+    description: Requests para interação com o Diretório de Identificadores de Contas Transacionais (DICT)
+  - name: DICT-Infrações
+    description: Requests para interação com o Diretório de Identificadores de Contas Transacionais (DICT)
+  - name: DICT-MED 2.0
+    description: Requests para interação com o Diretório de Identificadores de Contas Transacionais (DICT)
+  - name: DICT-Notificações de Eventos
+    description: Requests para interação com o Diretório de Identificadores de Contas Transacionais (DICT)
+  - name: DICT-Devoluções
+    description: Requests para interação com o Diretório de Identificadores de Contas Transacionais (DICT)
+  - name: DICT-Reconciliações
+    description: Requests para interação com o Diretório de Identificadores de Contas Transacionais (DICT)
+  - name: DICT-Reivindicações
+    description: Requests para interação com o Diretório de Identificadores de Contas Transacionais (DICT)
+  - name: Legado
+    description: Endpoints legados
+components:
+  schemas:
+    cpfCnpj:
+      type: string
+      pattern: ^[0-9]{11,14}$
+    idFimAFim:
+      type: string
+      pattern: /[E|D][0-9]{8}[0-9]{4}[0-1][0-9][0-3][0-9][0-2][0-9][0-5][0-9][a-zA-Z0-9]{11}/
+    onz-payerid:
+      type: string
+      pattern: ^[0-9]{11,14}$
+paths:
+  /v3/qrcode/checkBrCode:
+    post:
+      summary: Consulta de QRCode
+      tags:
+        - DICT-QRCodes
+      description: Realiza a consulta de um QRCode através do código BRCode
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                brCode:
+                  type: string
+                codMun:
+                  type: string
+                  minLength: 7
+                  maxLength: 7
+                DPP:
+                  type: string
+                  default: '2024-02-05'
+              required:
+                - brCode
+                - codMun
+              additionalProperties: false
+        required: true
+      parameters:
+        - schema:
+            type: string
+          in: header
+          name: onz-payerid
+          required: true
+      responses:
+        '200':
+          description: Default Response
+  /v3/dict/chave/{key}:
+    get:
+      summary: Buscar Chave Pix
+      tags:
+        - DICT-Chaves
+      description: Obtém os detalhes de uma chave Pix
+      parameters:
+        - schema:
+            anyOf:
+              - type: string
+              - type: string
+                pattern: ^\+[1-9]\d\d{1,14}$
+              - type: string
+                pattern: ^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$
+              - type: string
+                format: uuid
+          in: path
+          name: key
+          required: true
+        - schema:
+            type: string
+          in: header
+          name: onz-payerid
+          required: true
+        - schema:
+            $ref: '#/components/schemas/onz-payerid'
+          in: header
+          name: onz-endtoendid
+          required: false
+        - schema:
+            type: boolean
+            default: false
+          in: header
+          name: onz-includestatistics
+          required: false
+      responses:
+        '200':
+          description: Default Response
+    put:
+      summary: Atualizar Chave Pix
+      tags:
+        - DICT-Chaves
+      description: Realiza a atualização dos dados de uma chave Pix
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                Type:
+                  type: string
+                  enum:
+                    - NATURAL_PERSON
+                    - LEGAL_PERSON
+                TaxIdNumber:
+                  type: string
+                Name:
+                  type: string
+                TradeName:
+                  type: string
+                Branch:
+                  type: string
+                  pattern: ^\d+$
+                  minLength: 4
+                  maxLength: 4
+                AccountNumber:
+                  type: string
+                  pattern: ^\d+$
+                  minLength: 1
+                  maxLength: 20
+                AccountType:
+                  type: string
+                  enum:
+                    - SLRY
+                    - SVGS
+                    - CACC
+                    - TRAN
+                OpeningDate:
+                  type: string
+                Reason:
+                  type: string
+                  enum:
+                    - USER_REQUESTED
+                    - BRANCH_TRANSFER
+                    - RECONCILIATION
+              required:
+                - Reason
+              additionalProperties: false
+        required: true
+      parameters:
+        - schema:
+            anyOf:
+              - type: string
+              - type: string
+                pattern: ^\+[1-9]\d\d{1,14}$
+              - type: string
+                pattern: ^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$
+              - type: string
+                format: uuid
+          in: path
+          name: key
+          required: true
+      responses:
+        '200':
+          description: Default Response
+  /v3/dict/chave/conta/{agency}/{account}:
+    get:
+      summary: Buscar Chave Pix por Agência e Conta
+      tags:
+        - DICT-Chaves
+      description: Realiza a busca de uma chave Pix no ambiente do DICT por agência e conta
+      parameters:
+        - schema:
+            type: string
+            pattern: ^\d+$
+            minLength: 4
+            maxLength: 4
+          in: path
+          name: agency
+          required: true
+        - schema:
+            type: string
+            pattern: ^\d+$
+            minLength: 1
+            maxLength: 20
+          in: path
+          name: account
+          required: true
+        - schema:
+            type: string
+          in: header
+          name: onz-payerid
+          required: true
+      responses:
+        '200':
+          description: Default Response
+  /v3/dict/chave/politicas/{policy}:
+    get:
+      summary: Consultar Política
+      tags:
+        - DICT-Chaves
+      description: Obtém o estado atual do balde do participante para a política informada.
+      parameters:
+        - schema:
+            type: string
+            maxLength: 256
+          in: path
+          name: policy
+          required: true
+      responses:
+        '200':
+          description: Default Response
+  /v3/dict/chave/politicas:
+    get:
+      summary: Listar Políticas
+      tags:
+        - DICT-Chaves
+      description: Obtém a lista de políticas de limitação de acesso ao DICT para o participante requisitante.
+      responses:
+        '200':
+          description: Default Response
+  /v3/dict/chave:
+    post:
+      summary: Criar Chave Pix
+      tags:
+        - DICT-Chaves
+      description: Cria uma nova chave Pix no ambiente do DICT.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                Key:
+                  anyOf:
+                    - type: string
+                    - type: string
+                      pattern: ^\+[1-9]\d\d{1,14}$
+                    - type: string
+                      pattern: ^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$
+                    - type: string
+                      format: uuid
+                KeyType:
+                  type: string
+                  enum:
+                    - CPF
+                    - CNPJ
+                    - PHONE
+                    - EMAIL
+                    - EVP
+                Branch:
+                  type: string
+                  pattern: ^\d+$
+                  minLength: 4
+                  maxLength: 4
+                AccountNumber:
+                  type: string
+                  pattern: ^\d+$
+                  minLength: 1
+                  maxLength: 20
+                AccountType:
+                  type: string
+                  enum:
+                    - SLRY
+                    - SVGS
+                    - CACC
+                    - TRAN
+                Type:
+                  type: string
+                  enum:
+                    - LEGAL_PERSON
+                    - NATURAL_PERSON
+                OpeningDate:
+                  type: string
+                  format: date-time
+                Name:
+                  type: string
+                  minLength: 1
+                  maxLength: 120
+                TradeName:
+                  type: string
+                  maxLength: 100
+                TaxIdNumber:
+                  $ref: '#/components/schemas/cpfCnpj'
+                Reason:
+                  type: string
+                  enum:
+                    - USER_REQUESTED
+                    - RECONCILIATION
+              required:
+                - KeyType
+                - Branch
+                - AccountNumber
+                - AccountType
+                - Type
+                - OpeningDate
+                - Name
+                - TaxIdNumber
+                - Reason
+              additionalProperties: false
+        required: true
+      responses:
+        '200':
+          description: Default Response
+  /v3/dict/chave/list:
+    post:
+      summary: Listar Chaves Pix
+      tags:
+        - DICT-Chaves
+      description: Listar as chaves Pix cadastradas para o usuário
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                Page:
+                  type: number
+                  default: 1
+                PerPage:
+                  type: number
+                  maximum: 350
+                  default: 10
+                Filter:
+                  type: string
+                QueryFilter:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      column:
+                        type: string
+                      operation:
+                        type: string
+                        enum:
+                          - ILIKE
+                          - NOT_ILIKE
+                          - HIGHER
+                          - LOWER
+                          - EQUALS
+                          - NOT_EQUALS
+                          - AFTER_DATE
+                          - BEFORE_DATE
+                          - EQUALS_DATE
+                          - AFTER_DATETIME
+                          - BEFORE_DATETIME
+                          - EQUALS_DATETIME
+                      value:
+                        anyOf:
+                          - type: string
+                          - type: number
+                    required:
+                      - column
+                      - operation
+                      - value
+                    additionalProperties: false
+                  default: []
+                ExportCSV:
+                  type: boolean
+                InitialDate:
+                  type: string
+                  format: date-time
+                FinalDate:
+                  type: string
+                  format: date-time
+              additionalProperties: false
+      responses:
+        '200':
+          description: Default Response
+  /v3/dict/chave/existencia:
+    post:
+      summary: Verificar existência de chaves
+      tags:
+        - DICT-Chaves
+      description: Consulta a existência de um conjunto de chaves no diretório de identificadores.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                Keys:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      Key:
+                        anyOf:
+                          - type: string
+                          - type: string
+                            pattern: ^\+[1-9]\d\d{1,14}$
+                          - type: string
+                            pattern: ^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$
+                          - type: string
+                            format: uuid
+                    required:
+                      - Key
+                    additionalProperties: false
+              required:
+                - Keys
+              additionalProperties: false
+        required: true
+      responses:
+        '200':
+          description: Default Response
+  /v3/dict/chave/{key}/{reason}:
+    delete:
+      summary: Deletar Chave Pix
+      tags:
+        - DICT-Chaves
+      description: Realiza a exclusão de uma chave Pix
+      parameters:
+        - schema:
+            anyOf:
+              - type: string
+              - type: string
+                pattern: ^\+[1-9]\d\d{1,14}$
+              - type: string
+                pattern: ^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$
+              - type: string
+                format: uuid
+          in: path
+          name: key
+          required: true
+        - schema:
+            type: string
+            enum:
+              - USER_REQUESTED
+              - ACCOUNT_CLOSURE
+              - BRANCH_TRANSFER
+              - RECONCILIATION
+              - FRAUD
+          in: path
+          name: reason
+          required: true
+        - schema:
+            type: string
+          in: header
+          name: onz-taxidnumber
+          required: false
+      responses:
+        '200':
+          description: Default Response
+  /v3/dict/devolucao/{id}:
+    get:
+      summary: Consultar solicitação de devolução
+      tags:
+        - DICT-Devoluções
+      description: Obtém detalhes de uma solicitação de devolução.
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          in: path
+          name: id
+          required: true
+      responses:
+        '200':
+          description: Default Response
+  /v3/dict/devolucao:
+    post:
+      summary: Criar uma Solicitação de Devolução
+      tags:
+        - DICT-Devoluções
+      description: Cria uma Solicitação de devolução. Apenas o participante debitado pode criar uma Solicitação de devolução.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                TransactionId:
+                  type: string
+                RefundReason:
+                  type: string
+                  enum:
+                    - FRAUD
+                    - OPERATIONAL_FLAW
+                    - REFUND_CANCELLED
+                RefundAmount:
+                  type: number
+                  exclusiveMinimum: true
+                  minimum: 0
+                RefundDetails:
+                  type: string
+                  maxLength: 2000
+              required:
+                - TransactionId
+                - RefundReason
+                - RefundAmount
+                - RefundDetails
+              additionalProperties: false
+        required: true
+      responses:
+        '200':
+          description: Default Response
+  /v3/dict/devolucao/{id}/cancelar:
+    post:
+      summary: Cancelar solicitação de devolução
+      tags:
+        - DICT-Devoluções
+      description: Cancela a Solicitação de devolução. Só pode ser realizada pelo participante que criou a solicitação.
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          in: path
+          name: id
+          required: true
+      responses:
+        '200':
+          description: Default Response
+  /v3/dict/devolucao/{id}/fechar:
+    post:
+      summary: Fechar solicitação de devolução
+      tags:
+        - DICT-Devoluções
+      description: Fecha a solicitação de devolução. A solicitação só pode ser fechada pelo participante contestado.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                RefundAnalysisResult:
+                  type: string
+                  enum:
+                    - TOTALLY_ACCEPTED
+                    - PARTIALLY_ACCEPTED
+                    - REJECTED
+                RefundAnalysisDetails:
+                  type: string
+                  maxLength: 2000
+                RefundTransactionId:
+                  type: string
+                RefundRejectionReason:
+                  type: string
+                  enum:
+                    - NO_BALANCE
+                    - ACCOUNT_CLOSURE
+                    - CANNOT_REFUND
+                    - OTHER
+                EffectiveRefundedAmount:
+                  type: number
+                  format: currency
+                  description: |
+                    Valor efetivamente devolvido.
+                    Obs: Utilizado apenas no contexto de Recuperação de Valores.
+              required:
+                - RefundAnalysisResult
+                - EffectiveRefundedAmount
+              additionalProperties: false
+        required: true
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          in: path
+          name: id
+          required: true
+      responses:
+        '200':
+          description: Default Response
+  /v3/dict/devolucao/list:
+    post:
+      summary: Listar Requisições de Devolução
+      tags:
+        - DICT-Devoluções
+      description: Obtém lista de requisições de devolução em que o participante é parte.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                Page:
+                  type: number
+                  default: 1
+                PerPage:
+                  type: number
+                  maximum: 350
+                  default: 10
+                Filter:
+                  type: string
+                QueryFilter:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      column:
+                        type: string
+                      operation:
+                        type: string
+                        enum:
+                          - ILIKE
+                          - NOT_ILIKE
+                          - HIGHER
+                          - LOWER
+                          - EQUALS
+                          - NOT_EQUALS
+                          - AFTER_DATE
+                          - BEFORE_DATE
+                          - EQUALS_DATE
+                          - AFTER_DATETIME
+                          - BEFORE_DATETIME
+                          - EQUALS_DATETIME
+                      value:
+                        anyOf:
+                          - type: string
+                          - type: number
+                    required:
+                      - column
+                      - operation
+                      - value
+                    additionalProperties: false
+                  default: []
+                ExportCSV:
+                  type: boolean
+                InitialDate:
+                  type: string
+                  format: date-time
+                FinalDate:
+                  type: string
+                  format: date-time
+              additionalProperties: false
+      responses:
+        '200':
+          description: Default Response
+  /v3/dict/reivindicacao/{id}:
+    get:
+      summary: Consultar Reivindicação
+      tags:
+        - DICT-Reivindicações
+      description: Obtém detalhes de uma reivindicação.
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          in: path
+          name: id
+          required: true
+      responses:
+        '200':
+          description: Sucesso na consulta da reivindicação
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  Id:
+                    type: string
+                    format: uuid
+                  Type:
+                    type: string
+                    enum: [PORTABILITY, OWNERSHIP]
+                  Key:
+                    type: string
+                  KeyType:
+                    type: string
+                    enum: [CNPJ, CPF, EMAIL, PHONE, EVP]
+                  ClaimerParticipant:
+                    type: string
+                  ClaimerBranch:
+                    type: string
+                  ClaimerAccountNumber:
+                    type: string
+                  ClaimerAccountType:
+                    type: string
+                    enum: [TRAN, CACC, SLRY, SVGS]
+                  ClaimerOpeningDate:
+                    type: string
+                    format: date-time
+                  ClaimerType:
+                    type: string
+                    enum: [LEGAL_PERSON, NATURAL_PERSON]
+                  ClaimerTaxIdNumber:
+                    type: string
+                  ClaimerName:
+                    type: string
+                  Status:
+                    type: string
+                    enum:
+                      [
+                        OPEN,
+                        COMPLETED,
+                        CANCELLED,
+                        CONFIRMED,
+                        WAITING_RESOLUTION,
+                      ]
+                  CompletionPeriodEnd:
+                    type: string
+                    format: date-time
+                    nullable: true
+                  ResolutionPeriodEnd:
+                    type: string
+                    format: date-time
+                    nullable: true
+                  DonorParticipant:
+                    type: string
+                  DonorBranch:
+                    type: string
+                  DonorAccountNumber:
+                    type: string
+                  DonorAccountType:
+                    type: string
+                    enum: [TRAN, CACC, SLRY, SVGS]
+                  DonorOpeningDate:
+                    type: string
+                    format: date-time
+                  DonorType:
+                    type: string
+                    enum: [LEGAL_PERSON, NATURAL_PERSON]
+                  DonorTaxIdNumber:
+                    type: string
+                  DonorName:
+                    type: string
+                  RelatedParticipant:
+                    type: string
+                  LastModified:
+                    type: string
+                    format: date-time
+                  CreatedAt:
+                    type: string
+                    format: date-time
+                  UpdatedAt:
+                    type: string
+                    format: date-time
+                  ParticipantName:
+                    type: string
+                  ParticipantNameDonor:
+                    type: string
+                  IsInternalToExternal:
+                    type: boolean
+                  isClaimer:
+                    type: boolean
+
+  /v3/dict/reivindicacao/{id}/confirmar:
+    post:
+      summary: Confirmar Reivindicação
+      tags:
+        - DICT-Reivindicações
+      description: Confirma a operação de reivindicação. Como consequência, vínculo da chave com participante doador é removido.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                Reason:
+                  type: string
+                  enum:
+                    - USER_REQUESTED
+                    - ACCOUNT_CLOSURE
+                    - FRAUD
+                    - DEFAULT_OPERATION
+                    - RECONCILIATION
+              required:
+                - Reason
+              additionalProperties: false
+        required: true
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          in: path
+          name: id
+          required: true
+      responses:
+        '200':
+          description: Default Response
+  /v3/dict/reivindicacao/{id}/cancelar:
+    post:
+      summary: Cancelar Reivindicação
+      tags:
+        - DICT-Reivindicações
+      description: Cancela reivindicação.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                Reason:
+                  type: string
+                  enum:
+                    - USER_REQUESTED
+                    - ACCOUNT_CLOSURE
+                    - FRAUD
+                    - DEFAULT_OPERATION
+                    - RECONCILIATION
+              required:
+                - Reason
+              additionalProperties: false
+        required: true
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          in: path
+          name: id
+          required: true
+      responses:
+        '200':
+          description: Default Response
+  /v3/dict/reivindicacao:
+    post:
+      summary: Criar Reivindicação
+      tags:
+        - DICT-Reivindicações
+      description: Cria uma nova reivindicação.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                Key:
+                  anyOf:
+                    - type: string
+                    - type: string
+                      pattern: ^\+[1-9]\d\d{1,14}$
+                    - type: string
+                      pattern: ^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$
+                    - type: string
+                      format: uuid
+                KeyType:
+                  type: string
+                  enum:
+                    - CPF
+                    - CNPJ
+                    - PHONE
+                    - EMAIL
+                    - EVP
+                Branch:
+                  type: string
+                  pattern: ^\d{4}$
+                AccountNumber:
+                  type: string
+                  pattern: ^\d{1,20}$
+                AccountType:
+                  type: string
+                  enum:
+                    - CACC
+                    - TRAN
+                    - SLRY
+                    - SVGS
+                OpeningDate:
+                  type: string
+                ClaimerType:
+                  type: string
+                  enum:
+                    - NATURAL_PERSON
+                    - LEGAL_PERSON
+                Type:
+                  type: string
+                  enum:
+                    - OWNERSHIP
+                    - PORTABILITY
+                TaxIdNumber:
+                  anyOf:
+                    - type: string
+                      pattern: ^\d+$
+                      minLength: 11
+                      maxLength: 11
+                    - type: string
+                      pattern: ^\d+$
+                      minLength: 14
+                      maxLength: 14
+                Name:
+                  type: string
+              required:
+                - Key
+                - KeyType
+                - Branch
+                - AccountNumber
+                - AccountType
+                - OpeningDate
+                - ClaimerType
+                - Type
+                - TaxIdNumber
+                - Name
+              additionalProperties: false
+        required: true
+      responses:
+        '200':
+          description: Default Response
+  /v3/dict/reivindicacao/list:
+    post:
+      summary: Listar Reivindicações
+      tags:
+        - DICT-Reivindicações
+      description: Obtém uma lista de reivindicações, ordenada de forma crescente pelo campo `LastModified`, de acordo com os filtros passados.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                Page:
+                  type: number
+                  default: 1
+                PerPage:
+                  type: number
+                  maximum: 350
+                  default: 25
+                Filter:
+                  type: string
+                QueryFilter:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      column:
+                        type: string
+                      operation:
+                        type: string
+                        enum:
+                          - ILIKE
+                          - NOT_ILIKE
+                          - HIGHER
+                          - LOWER
+                          - EQUALS
+                          - NOT_EQUALS
+                          - AFTER_DATE
+                          - BEFORE_DATE
+                          - EQUALS_DATE
+                          - AFTER_DATETIME
+                          - BEFORE_DATETIME
+                          - EQUALS_DATETIME
+                      value:
+                        anyOf:
+                          - type: string
+                          - type: number
+                    required:
+                      - column
+                      - operation
+                      - value
+                    additionalProperties: false
+                  default: []
+              additionalProperties: false
+      responses:
+        '200':
+          description: Default Response
+  /v3/dict/infracao/{id}:
+    get:
+      summary: Consultar Relato de Infração
+      tags:
+        - DICT-Infrações
+      description: >-
+        Obtém detalhes de um relato de infração. Quando a infração foi fechada
+        com AnalysisResult=AGREED, a resposta inclui FraudMarkerId (UUID da
+        marcação de fraude gerada automaticamente pelo DICT). Use esse ID em
+        GET /v4/dict/antifraud/fraud-markers/{FraudMarkerId}.
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          in: path
+          name: id
+          required: true
+      responses:
+        '200':
+          description: >-
+            Detalhes da infração. Pode incluir FraudMarkerId quando houver
+            marcação automática vinculada (fecho AGREED).
+  /v3/dict/infracao:
+    post:
+      summary: Criar Relato de Infração
+      tags:
+        - DICT-Infrações
+      description: Cria um relato de infração. Tanto o participante debitado quanto o creditado podem criar um relato de infração.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                TransactionId:
+                  type: string
+                ReportDetails:
+                  type: string
+                  maxLength: 2000
+                InfractionType:
+                  type: string
+                  enum:
+                    - REFUND_REQUEST
+                    - REFUND_CANCELLED
+                SituationType:
+                  type: string
+                  enum:
+                    - SCAM
+                    - ACCOUNT_TAKEOVER
+                    - COERCION
+                    - FRAUDULENT_ACCESS
+                    - OTHER
+                Phone:
+                  type: string
+                  pattern: ^\+[0-9]\d{1,14}$
+                  maxLength: 16
+                Email:
+                  type: string
+                  pattern: ^[a-z0-9.!#$%&'*+\/=?^_`{|}~-]+@[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*$
+                  maxLength: 256
+              required:
+                - TransactionId
+                - ReportDetails
+                - InfractionType
+                - SituationType
+                - Phone
+                - Email
+              additionalProperties: false
+        required: true
+      responses:
+        '200':
+          description: Default Response
+  /v3/dict/infracao/list:
+    post:
+      summary: Listar Relatos de Infração
+      tags:
+        - DICT-Infrações
+      description: Obtém lista de relatos de infração em que o participante é parte.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                Page:
+                  type: number
+                  default: 1
+                PerPage:
+                  type: number
+                  maximum: 350
+                  default: 10
+                Filter:
+                  type: string
+                QueryFilter:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      column:
+                        type: string
+                      operation:
+                        type: string
+                        enum:
+                          - ILIKE
+                          - NOT_ILIKE
+                          - HIGHER
+                          - LOWER
+                          - EQUALS
+                          - NOT_EQUALS
+                          - AFTER_DATE
+                          - BEFORE_DATE
+                          - EQUALS_DATE
+                          - AFTER_DATETIME
+                          - BEFORE_DATETIME
+                          - EQUALS_DATETIME
+                      value:
+                        anyOf:
+                          - type: string
+                          - type: number
+                    required:
+                      - column
+                      - operation
+                      - value
+                    additionalProperties: false
+                  default: []
+                ExportCSV:
+                  type: boolean
+                InitialDate:
+                  type: string
+                  format: date-time
+                FinalDate:
+                  type: string
+                  format: date-time
+              additionalProperties: false
+      responses:
+        '200':
+          description: Default Response
+  /v3/dict/infracao/{id}/fechar:
+    post:
+      summary: Fechar Relato de Infração
+      tags:
+        - DICT-Infrações
+      description: >-
+        Fecha o relato de infração. Se o relato foi criado pelo participante
+        debitado, o creditado deve realizar o fechamento e vice-versa. O campo
+        FraudType é obrigatório quando o relato é fechado com o resultado
+        AGREED. Ao fechar como AGREED (fluxo MED / solicitação de devolução),
+        o DICT gera automaticamente uma marcação de fraude e a resposta inclui
+        FraudMarkerId (UUID) para consulta em
+        GET /v4/dict/antifraud/fraud-markers/{FraudMarkerId}.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                AnalysisDetails:
+                  type: string
+                  maxLength: 2000
+                AnalysisResult:
+                  type: string
+                  enum:
+                    - AGREED
+                    - DISAGREED
+                FraudType:
+                  type: string
+                  enum:
+                    - APPLICATION_FRAUD
+                    - MULE_ACCOUNT
+                    - SCAMMER_ACCOUNT
+                    - OTHER
+              required:
+                - AnalysisDetails
+                - AnalysisResult
+              additionalProperties: false
+        required: true
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          in: path
+          name: id
+          required: true
+      responses:
+        '200':
+          description: >-
+            Infração fechada. Quando AnalysisResult=AGREED, inclui FraudMarkerId
+            com o UUID da marcação de fraude gerada automaticamente pelo DICT.
+  /v3/dict/infracao/{id}/cancelar:
+    post:
+      summary: Cancelar Relato de Infração
+      tags:
+        - DICT-Infrações
+      description: Cancela o relato de infração. Só pode ser realizada pelo participante que criou o relato.
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          in: path
+          name: id
+          required: true
+      responses:
+        '200':
+          description: Default Response
+  /v3/dict/estatisticas/{document}:
+    get:
+      summary: Consultar Estatísticas de usuário final
+      tags:
+        - DICT-Estatísticas
+      description: Obtém dados estatísticos de perfil de uso do usuário (liquidações, fraudes reportadas e fraudes confirmadas).
+      parameters:
+        - schema:
+            type: string
+            pattern: ^\d{4}-\d{2}-\d{2}$
+          in: query
+          name: date
+          required: false
+        - schema:
+            type: string
+          in: path
+          name: document
+          required: true
+      responses:
+        '200':
+          description: Default Response
+  /v3/lp/{pullNext}:
+    get:
+      summary: Long Polling
+      tags:
+        - ICOM
+      description: |
+        Serviço de long polling para consulta de mensagens recebidas. <br>
+        O primeiro `pullNext` deve ser obriatóriamente `start`. <br>
+        As consultas subsequentes devem usar o token recebido no header `ONZ-Pull-Next` da resposta anterior.
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: pullNext
+          required: true
+          description: Token de continuação do long polling (usar "start" na primeira chamada)
+      responses:
+        '200':
+          description: Mensagens disponíveis
+          headers:
+            ONZ-Pull-Next:
+              schema:
+                type: string
+              description: Token para a próxima consulta via long polling
+        '204':
+          description: Nenhuma mensagem disponível
+          headers:
+            ONZ-Pull-Next:
+              schema:
+                type: string
+              description: Token para a próxima consulta via long polling
+  /v3/icom/pacs/002:
+    post:
+      summary: Envio de PACS.002
+      tags:
+        - ICOM
+      description: Resposta para as mensagens PACS.008 e PACS.004
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                idInstrucaoOriginal:
+                  type: string
+                idFimAFimOriginal:
+                  $ref: '#/components/schemas/idFimAFim'
+                situacaoDaTransacao:
+                  type: string
+                  enum:
+                    - ACSP
+                    - RJCT
+                codigoDeErro:
+                  type: string
+                  enum:
+                    - AB09
+                    - AB03
+                    - AC03
+                    - AC06
+                    - AC07
+                    - AC14
+                    - AG03
+                    - AM02
+                    - AM09
+                    - BE01
+                    - BE17
+                    - CH11
+                    - DS04
+                    - DS24
+                    - DT05
+                    - RR04
+                    - SL02
+                    - ''
+              required:
+                - idInstrucaoOriginal
+                - idFimAFimOriginal
+                - situacaoDaTransacao
+              additionalProperties: false
+        required: true
+      responses:
+        '200':
+          description: Default Response
+  /v3/icom/pacs/004:
+    post:
+      summary: Envio de PACS.004
+      tags:
+        - ICOM
+      description: Devolução de valores
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                endToEndID:
+                  type: string
+                idFimAFim:
+                  $ref: '#/components/schemas/idFimAFim'
+                valor:
+                  type: number
+                  exclusiveMinimum: true
+                  minimum: 0
+                codigoDevolucao:
+                  type: string
+                motivoDevolucao:
+                  type: string
+                  default: ''
+                participanteUsuarioPagador:
+                  type: string
+                participanteUsuarioRecebedor:
+                  type: string
+              required:
+                - idFimAFim
+                - valor
+                - codigoDevolucao
+                - participanteUsuarioPagador
+                - participanteUsuarioRecebedor
+              additionalProperties: false
+        required: true
+      responses:
+        '200':
+          description: Default Response
+  /v3/icom/pacs/008:
+    post:
+      summary: Envio de PACS.008
+      tags:
+        - ICOM
+      description: Transferência de valores
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                idConciliacaoRecebedor:
+                  type: string
+                  pattern: ^\w+$|^$
+                  nullable: true
+                valor:
+                  type: number
+                  exclusiveMinimum: true
+                  minimum: 0
+                nomeUsuarioPagador:
+                  type: string
+                cpfCnpjUsuarioPagador:
+                  type: string
+                contaUsuarioPagador:
+                  type: string
+                  pattern: ^\d+$
+                  maxLength: 20
+                agenciaUsuarioPagador:
+                  type: string
+                  pattern: ^\d+$
+                  maxLength: 4
+                tipoContaUsuarioPagador:
+                  type: string
+                  enum:
+                    - CACC
+                    - SLRY
+                    - SVGS
+                    - TRAN
+                participanteDoUsuarioPagador:
+                  type: string
+                  minLength: 8
+                  maxLength: 8
+                participanteDoUsuarioRecebedor:
+                  type: string
+                  minLength: 8
+                  maxLength: 8
+                cpfCnpjUsuarioRecebedor:
+                  $ref: '#/components/schemas/cpfCnpj'
+                contaUsuarioRecebedor:
+                  type: string
+                  pattern: ^\d+$
+                  maxLength: 20
+                agenciaUsuarioRecebedor:
+                  type: string
+                  pattern: ^\d+$
+                  maxLength: 4
+                tipoContaUsuarioRecebedor:
+                  type: string
+                  enum:
+                    - CACC
+                    - SLRY
+                    - SVGS
+                    - TRAN
+                informacoesEntreUsuarios:
+                  type: string
+                  default: ''
+                idContaTransacional:
+                  type: string
+                formaDeIniciacao:
+                  type: string
+                  enum:
+                    - MANU
+                    - DICT
+                    - INIC
+                    - QRDN
+                    - QRES
+                    - QRPG
+                finalidadeDaTransacao:
+                  type: string
+                  enum:
+                    - IPAY
+                    - GSCB
+                    - OTHR
+                modalidadeAgente:
+                  type: string
+                  enum:
+                    - AGFSS
+                    - AGTEC
+                    - AGTOT
+                prestadorDoServicoDeSaque:
+                  type: string
+                informacoesValor:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      valor:
+                        type: number
+                        exclusiveMinimum: true
+                        minimum: 0
+                      tipo:
+                        type: string
+                        enum:
+                          - VLCP
+                          - VLDN
+                    required:
+                      - valor
+                      - tipo
+                    additionalProperties: false
+                tipoPrioridadePagamento:
+                  type: string
+                  enum:
+                    - PAGPRI
+                    - PAGFRD
+                    - PAGAGD
+                  default: PAGPRI
+                endToEndID:
+                  $ref: '#/components/schemas/cpfCnpj'
+                cnpjIniciadorPagamento:
+                  $ref: '#/components/schemas/cpfCnpj'
+                recebimento:
+                  type: string
+                  format: date-time
+              required:
+                - valor
+                - nomeUsuarioPagador
+                - cpfCnpj
+                - contaUsuarioPagador
+                - agenciaUsuarioPagador
+                - tipoContaUsuarioPagador
+                - participanteDoUsuarioPagador
+                - participanteDoUsuarioRecebedor
+                - cpfCnpjUsuarioRecebedor
+                - contaUsuarioRecebedor
+                - agenciaUsuarioRecebedor
+                - tipoContaUsuarioRecebedor
+                - formaDeIniciacao
+                - finalidadeDaTransacao
+              additionalProperties: false
+        required: true
+      responses:
+        '200':
+          description: Default Response
+  /v3/icom/trck/002:
+    post:
+      summary: Envio de TRCK.002
+      tags:
+        - ICOM
+      description: >-
+        Reporta transferência escritural (book transfer / transação interna) ao
+        BACEN via TRCK.002. Quando `tipoDaTransacaoReportada` é omitido, a API
+        deriva `BOK1` (mesmo ISPB) ou `BOK2` (ISPBs distintos). Para formas de
+        iniciação `DICT`, `QRDN`, `QRES`, `APDN`, `APES` ou `INIC`, o campo
+        `idContaTransacional` (chave Pix) é obrigatório.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                situacaoDaTransacao:
+                  type: string
+                  enum:
+                    - ACCC
+                  default: ACCC
+                idInstrucaoDevolucao:
+                  $ref: '#/components/schemas/idFimAFim'
+                idFimAFim:
+                  $ref: '#/components/schemas/idFimAFim'
+                formaDeIniciacao:
+                  type: string
+                  enum:
+                    - APDN
+                    - APES
+                    - AUTO
+                    - DICT
+                    - INIC
+                    - MANU
+                    - QRDN
+                    - QRES
+                tipoDaTransacaoReportada:
+                  type: string
+                  enum:
+                    - BOK1
+                    - BOK2
+                valor:
+                  type: number
+                  exclusiveMinimum: true
+                  minimum: 0
+                dataHoraDaTransacao:
+                  type: string
+                  format: date-time
+                cpfCnpjUsuarioPagador:
+                  $ref: '#/components/schemas/cpfCnpj'
+                contaUsuarioPagador:
+                  type: string
+                  pattern: ^\d+$
+                  maxLength: 20
+                agenciaUsuarioPagador:
+                  type: string
+                  pattern: ^\d+$
+                  maxLength: 4
+                  default: '0000'
+                tipoContaUsuarioPagador:
+                  type: string
+                  enum:
+                    - CACC
+                    - OTHR
+                    - SLRY
+                    - SVGS
+                    - TRAN
+                participanteDoUsuarioPagador:
+                  type: string
+                  minLength: 8
+                  maxLength: 8
+                participanteDoUsuarioRecebedor:
+                  type: string
+                  minLength: 8
+                  maxLength: 8
+                cpfCnpjUsuarioRecebedor:
+                  $ref: '#/components/schemas/cpfCnpj'
+                contaUsuarioRecebedor:
+                  type: string
+                  pattern: ^\d+$
+                  maxLength: 20
+                agenciaUsuarioRecebedor:
+                  type: string
+                  pattern: ^\d+$
+                  maxLength: 4
+                  default: '0000'
+                tipoContaUsuarioRecebedor:
+                  type: string
+                  enum:
+                    - CACC
+                    - OTHR
+                    - SLRY
+                    - SVGS
+                    - TRAN
+                idContaTransacional:
+                  type: string
+                  maxLength: 77
+              required:
+                - idFimAFim
+                - formaDeIniciacao
+                - valor
+                - dataHoraDaTransacao
+                - cpfCnpjUsuarioPagador
+                - contaUsuarioPagador
+                - tipoContaUsuarioPagador
+                - participanteDoUsuarioPagador
+                - participanteDoUsuarioRecebedor
+                - cpfCnpjUsuarioRecebedor
+                - contaUsuarioRecebedor
+                - tipoContaUsuarioRecebedor
+              additionalProperties: false
+              allOf:
+                - anyOf:
+                    - properties:
+                        formaDeIniciacao:
+                          enum:
+                            - AUTO
+                            - MANU
+                    - required:
+                        - idContaTransacional
+        required: true
+      responses:
+        '201':
+          description: TRCK.002 registrada e enviada
+
+  /v3/icom/pain/009:
+    post:
+      summary: Envio de PAIN.009
+      tags:
+        - ICOM
+      description: Dados da recorrência
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                tipoRecorrencia:
+                  type: string
+                  enum:
+                    - RCUR
+                tipoFrequencia:
+                  type: string
+                  enum:
+                    - MIAN
+                    - MNTH
+                    - QURT
+                    - WEEK
+                    - YEAR
+                dataInicialRecorrencia:
+                  type: string
+                  format: date
+                idRecorrencia:
+                  type: string
+                  maxLength: 29
+                idSolicitacaoRecorrencia:
+                  type: string
+                  maxLength: 29
+                dataFinalRecorrencia:
+                  type: string
+                  format: date
+                  nullable: true
+                indicadorObrigatorio:
+                  type: boolean
+                  default: false
+                valor:
+                  type: number
+                  exclusiveMinimum: true
+                  minimum: 0
+                indicadorPisoValorMaximo:
+                  type: boolean
+                  default: false
+                pisoValorMaximo:
+                  type: number
+                  exclusiveMinimum: true
+                  minimum: 0
+                  nullable: true
+                nomeUsuarioRecebedor:
+                  type: string
+                  maxLength: 140
+                cpfCnpjUsuarioRecebedor:
+                  $ref: '#/components/schemas/cpfCnpj'
+                participanteDoUsuarioRecebedor:
+                  type: string
+                  minLength: 8
+                  maxLength: 8
+                cpfCnpjUsuarioPagador:
+                  $ref: '#/components/schemas/cpfCnpj'
+                contaUsuarioPagador:
+                  type: string
+                  maxLength: 20
+                agenciaUsuarioPagador:
+                  type: string
+                  minLength: 4
+                  maxLength: 4
+                  nullable: true
+                participanteDoUsuarioPagador:
+                  type: string
+                  minLength: 8
+                  maxLength: 8
+                devedor:
+                  type: object
+                  properties:
+                    nomeDevedor:
+                      type: string
+                      maxLength: 140
+                    cpfCnpjDevedor:
+                      $ref: '#/components/schemas/cpfCnpj'
+                  required:
+                    - nomeDevedor
+                    - cpfCnpjDevedor
+                  additionalProperties: false
+                  nullable: true
+                numeroContrato:
+                  type: string
+                  maxLength: 35
+                descricao:
+                  type: string
+                  maxLength: 35
+                  nullable: true
+                permiteNovaTentativa:
+                  type: boolean
+                  default: false
+                solicExpiracao:
+                  type: string
+              required:
+                - tipoRecorrencia
+                - tipoFrequencia
+                - dataInicialRecorrencia
+                - idRecorrencia
+                - idSolicitacaoRecorrencia
+                - nomeUsuarioRecebedor
+                - cpfCnpjUsuarioRecebedor
+                - participanteDoUsuarioRecebedor
+                - cpfCnpjUsuarioPagador
+                - contaUsuarioPagador
+                - participanteDoUsuarioPagador
+                - numeroContrato
+                - solicExpiracao
+              additionalProperties: false
+        required: true
+      responses:
+        '200':
+          description: Default Response
+  /v3/icom/pain/011:
+    post:
+      summary: Envio de PAIN.011
+      tags:
+        - ICOM
+      description: Cancelamento da recorrência
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                cpfCnpjSolicitanteCancelamento:
+                  $ref: '#/components/schemas/cpfCnpj'
+                motivoCancelamento:
+                  type: string
+                  enum:
+                    - ACCL
+                    - CPCL
+                    - DCSD
+                    - ERSL
+                    - FRUD
+                    - PCFD
+                    - SLCR
+                    - SLDB
+                    - NRES
+                idRecorrencia:
+                  type: string
+                  maxLength: 29
+              required:
+                - cpfCnpjSolicitanteCancelamento
+                - motivoCancelamento
+                - idRecorrencia
+              additionalProperties: false
+        required: true
+      responses:
+        '200':
+          description: Default Response
+  /v3/icom/pain/012:
+    post:
+      summary: Envio de PAIN.012 - Autorização
+      tags:
+        - ICOM
+      description: Autorização da recorrência
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: boolean
+                motivoRejeicao:
+                  type: string
+                  enum:
+                    - AC01
+                    - AC04
+                    - AC06
+                    - AG12
+                    - AM05
+                    - AP01
+                    - AP02
+                    - AP03
+                    - AP04
+                    - AP05
+                    - AP06
+                    - AP07
+                    - AP08
+                    - AP10
+                    - AP11
+                    - AP12
+                    - AP13
+                    - AP14
+                    - AP15
+                    - CH16
+                    - DS27
+                    - MD01
+                    - MD20
+                    - RC09
+                    - RC10
+                idRecorrencia:
+                  type: string
+                  maxLength: 29
+                tipoRecorrencia:
+                  type: string
+                  enum:
+                    - RCUR
+                tipoFrequencia:
+                  type: string
+                  enum:
+                    - MIAN
+                    - MNTH
+                    - QURT
+                    - WEEK
+                    - YEAR
+                dataInicialRecorrencia:
+                  type: string
+                  format: date
+                dataFinalRecorrencia:
+                  type: string
+                  format: date
+                  nullable: true
+                indicadorObrigatorioOriginal:
+                  type: boolean
+                  default: false
+                valor:
+                  type: number
+                  exclusiveMinimum: true
+                  minimum: 0
+                nomeUsuarioRecebedor:
+                  type: string
+                  maxLength: 140
+                cpfCnpjUsuarioRecebedor:
+                  $ref: '#/components/schemas/cpfCnpj'
+                participanteDoUsuarioRecebedor:
+                  type: string
+                  minLength: 8
+                  maxLength: 8
+                codMunIBGE:
+                  type: string
+                  maxLength: 7
+                cpfCnpjUsuarioPagador:
+                  $ref: '#/components/schemas/cpfCnpj'
+                contaUsuarioPagador:
+                  type: string
+                  maxLength: 20
+                agenciaUsuarioPagador:
+                  type: string
+                  maxLength: 4
+                participanteDoUsuarioPagador:
+                  type: string
+                  minLength: 8
+                  maxLength: 8
+                devedor:
+                  type: object
+                  properties:
+                    nomeDevedor:
+                      type: string
+                      maxLength: 140
+                    cpfCnpjDevedor:
+                      $ref: '#/components/schemas/cpfCnpj'
+                  additionalProperties: false
+                numeroContrato:
+                  type: string
+                  maxLength: 35
+                descricao:
+                  type: string
+                  maxLength: 35
+                jornada:
+                  type: string
+                  enum:
+                    - AUT1
+                    - AUT2
+                    - AUT3
+                    - AUT4
+                valorMinimoRecebedor:
+                  type: number
+                  exclusiveMinimum: true
+                  minimum: 0
+              required:
+                - status
+                - idRecorrencia
+              additionalProperties: false
+        required: true
+      responses:
+        '200':
+          description: Default Response
+  /v3/icom/pain/012/confirmed:
+    post:
+      summary: Envio de PAIN.012 - Confirmação
+      tags:
+        - ICOM
+      description: Confirmação de autorização da recorrência
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                idRecorrencia:
+                  type: string
+                  maxLength: 29
+                dataHoraTipoSituacaoDaRecorrencia:
+                  type: string
+              required:
+                - idRecorrencia
+                - dataHoraTipoSituacaoDaRecorrencia
+              additionalProperties: false
+        required: true
+      responses:
+        '200':
+          description: Default Response
+  /v3/icom/pain/013:
+    post:
+      summary: Envio de PAIN.013
+      tags:
+        - ICOM
+      description: Criação da cobrança recorrente
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                metodoDePagamento:
+                  type: string
+                  enum:
+                    - TRF
+                dataHoraRecebimentoPeloParticipanteDoUsuarioRecebedor:
+                  type: string
+                prioridadePagamento:
+                  type: string
+                  enum:
+                    - NORM
+                tipoPrioridadePagamento:
+                  type: string
+                  enum:
+                    - PAGAGD
+                idRecorrencia:
+                  type: string
+                idFimAFim:
+                  $ref: '#/components/schemas/idFimAFim'
+                idConciliacaoRecebedor:
+                  type: string
+                valor:
+                  type: number
+                  exclusiveMinimum: true
+                  minimum: 0
+                participanteTarifado:
+                  type: string
+                  enum:
+                    - SLEV
+                formaDeIniciacao:
+                  type: string
+                  enum:
+                    - AUTO
+                cpfCnpjUsuarioPagador:
+                  $ref: '#/components/schemas/cpfCnpj'
+                participanteDoUsuarioPagador:
+                  type: string
+                  minLength: 8
+                  maxLength: 8
+                participanteDoUsuarioRecebedor:
+                  type: string
+                  minLength: 8
+                  maxLength: 8
+                cpfCnpjUsuarioRecebedor:
+                  $ref: '#/components/schemas/cpfCnpj'
+                contaUsuarioRecebedor:
+                  type: string
+                  pattern: ^\d+$
+                  maxLength: 20
+                agenciaUsuarioRecebedor:
+                  type: string
+                  pattern: ^\d+$
+                  maxLength: 4
+                  nullable: true
+                tipoContaUsuarioRecebedor:
+                  type: string
+                  enum:
+                    - CACC
+                    - SVGS
+                    - TRAN
+                informacoesEntreUsuarios:
+                  type: string
+                  maxLength: 140
+                  nullable: true
+                dataDeVencimento:
+                  type: string
+                devedor:
+                  type: object
+                  properties:
+                    nomeDevedor:
+                      type: string
+                      maxLength: 140
+                    cpfCnpjDevedor:
+                      $ref: '#/components/schemas/cpfCnpj'
+                  required:
+                    - nomeDevedor
+                    - cpfCnpjDevedor
+                  additionalProperties: false
+                  nullable: true
+                finalidadeDoAgendamento:
+                  type: string
+                  enum:
+                    - AGND
+                    - NTAG
+                    - RIFL
+                iniciadorDoAgendamento:
+                  type: string
+                  pattern: ^\d+$
+                  maxLength: 14
+                  default: '00000000000000'
+              required:
+                - metodoDePagamento
+                - dataHoraRecebimentoPeloParticipanteDoUsuarioRecebedor
+                - prioridadePagamento
+                - tipoPrioridadePagamento
+                - idRecorrencia
+                - idFimAFim
+                - idConciliacaoRecebedor
+                - valor
+                - participanteTarifado
+                - formaDeIniciacao
+                - cpfCnpjUsuarioPagador
+                - participanteDoUsuarioPagador
+                - participanteDoUsuarioRecebedor
+                - cpfCnpjUsuarioRecebedor
+                - contaUsuarioRecebedor
+                - tipoContaUsuarioRecebedor
+                - dataDeVencimento
+                - finalidadeDoAgendamento
+              additionalProperties: false
+        required: true
+      responses:
+        '200':
+          description: Default Response
+  /v3/icom/pain/014:
+    post:
+      summary: Envio de PAIN.014
+      tags:
+        - ICOM
+      description: Resposta para a mensagem PAIN.013
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                idFimAFimOriginal:
+                  $ref: '#/components/schemas/idFimAFim'
+                situacaoDoAgendamento:
+                  type: string
+                  enum:
+                    - ACSP
+                    - RJCT
+                codigoDeErro:
+                  type: string
+                  enum:
+                    - AB10
+                    - AC05
+                    - AC06
+                    - AG12
+                    - AM02
+                    - AM09
+                    - DENC
+                    - DS27
+                    - DTED
+                    - DTNT
+                    - FBRD
+                    - IRNT
+                    - MIDI
+                    - MSUC
+                    - NIEC
+                    - NIPA
+                    - NITX
+                    - QUNT
+                    - RC09
+                    - UDEI
+                  nullable: true
+                idConciliacaoRecebedorOriginal:
+                  type: string
+                  pattern: ^\w+$
+                  maxLength: 35
+                dataHoraAceitacaoOuRejeicaoDoAgendamento:
+                  type: string
+              required:
+                - idFimAFimOriginal
+                - situacaoDoAgendamento
+                - idConciliacaoRecebedorOriginal
+                - dataHoraAceitacaoOuRejeicaoDoAgendamento
+              additionalProperties: false
+        required: true
+      responses:
+        '200':
+          description: Default Response
+  /v3/icom/camt/060:
+    post:
+      summary: Envio de CAMT.060
+      tags:
+        - ICOM
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                idOriginal:
+                  type: string
+                tipoConsulta:
+                  type: string
+                  enum:
+                    - camt.052
+                    - camt.053
+                    - camt.054
+                dataInicialResultado:
+                  type: string
+                dataFinalResultado:
+                  type: string
+                horarioInicialResultado:
+                  type: string
+                horarioFinalResultado:
+                  type: string
+                tipoArquivo:
+                  type: string
+                reconciliarTransacao:
+                  type: boolean
+                  default: false
+                operationType:
+                  type: string
+                  enum:
+                    - SUM
+              required:
+                - tipoConsulta
+              additionalProperties: false
+        required: true
+      responses:
+        '200':
+          description: Default Response
+  /v3/icom/camt/055:
+    post:
+      summary: Envio de CAMT.055
+      description: Cancelamento de cobrança recorrente
+      tags:
+        - ICOM
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                idMensagemDoCancelamento:
+                  type: string
+                  maxLength: 32
+                idCancelamentoAgendamento:
+                  type: string
+                participanteDestinatarioDoCancelamento:
+                  type: string
+                  minLength: 8
+                  maxLength: 8
+                participanteSolicitanteDoCancelamento:
+                  type: string
+                  minLength: 8
+                  maxLength: 8
+                idConciliacaoRecebedorOriginal:
+                  type: string
+                  maxLength: 35
+                cpfCnpjUsuarioSolicitanteDoCancelamento:
+                  type: string
+                motivoDoCancelamento:
+                  type: string
+                  enum:
+                    - ACCT
+                    - BLCK
+                    - CCLD
+                    - FAIL
+                    - OTHR
+                    - SLBD
+                    - SLCR
+                idFimAFimOriginal:
+                  $ref: '#/components/schemas/idFimAFim'
+              required:
+                - participanteDestinatarioDoCancelamento
+                - participanteSolicitanteDoCancelamento
+                - idConciliacaoRecebedorOriginal
+                - cpfCnpjUsuarioSolicitanteDoCancelamento
+                - motivoDoCancelamento
+                - idFimAFimOriginal
+              additionalProperties: false
+        required: true
+      responses:
+        '200':
+          description: Default Response
+  /v3/icom/camt/029:
+    post:
+      summary: Envio de CAMT.029
+      tags:
+        - ICOM
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                idCancelamentoAgendamentoOriginal:
+                  type: string
+                  maxLength: 35
+                statusDoCancelamento:
+                  type: string
+                  enum:
+                    - ACCR
+                    - RJCR
+                codigoDeRejeicaoDoCancelamento:
+                  type: string
+                  enum:
+                    - AB09
+                    - AB10
+                    - AG12
+                    - CH16
+                    - CRNC
+                    - DENC
+                    - DS27
+                    - FBRD
+                    - FF08
+                    - PRJL
+                    - RC09
+                    - RC10
+              required:
+                - idCancelamentoAgendamentoOriginal
+                - statusDoCancelamento
+              additionalProperties: false
+        required: true
+      responses:
+        '200':
+          description: Default Response
+  /v3/icom/pibr/001:
+    post:
+      summary: Envio de PIBR.001
+      tags:
+        - ICOM
+      responses:
+        '200':
+          description: Default Response
+  /v3/icom/reda/014:
+    post:
+      summary: Envio de REDA.014
+      tags:
+        - ICOM
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                cnpjParticipanteIndireto:
+                  type: string
+                  pattern: ^[0-9]{14}$
+              required:
+                - cnpjParticipanteIndireto
+              additionalProperties: false
+        required: true
+      responses:
+        '200':
+          description: Default Response
+  /v3/icom/reda/022:
+    post:
+      summary: Envio de REDA.022
+      tags:
+        - ICOM
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ResponsavelFone:
+                  type: string
+                ResponsavelCelular:
+                  type: string
+                ResponsavelFax:
+                  type: string
+                ResponsavelEmail:
+                  type: string
+                  format: email
+                DiretorNome:
+                  type: string
+                DiretorFone:
+                  type: string
+                DiretorCelular:
+                  type: string
+                DiretorEmail:
+                  type: string
+                  format: email
+                PalavraChave:
+                  type: string
+                  maxLength: 8
+                CpfDiretorEstatutario:
+                  type: string
+                  pattern: ^[0-9]{11}$
+              required:
+                - ResponsavelFone
+                - ResponsavelCelular
+                - ResponsavelFax
+                - ResponsavelEmail
+                - DiretorNome
+                - DiretorFone
+                - DiretorCelular
+                - DiretorEmail
+                - PalavraChave
+                - CpfDiretorEstatutario
+              additionalProperties: false
+        required: true
+      responses:
+        '200':
+          description: Default Response
+  /v3/icom/reda/031:
+    post:
+      summary: Envio de REDA.031
+      tags:
+        - ICOM
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                participanteIndireto:
+                  type: string
+                  pattern: ^[0-9]{14}$
+              required:
+                - participanteIndireto
+              additionalProperties: false
+        required: true
+      responses:
+        '200':
+          description: Default Response
+  /v3/icom/mgmt/{endToEndId}:
+    get:
+      summary: Buscar transação por EndToEndId
+      tags:
+        - ICOM
+      description: Retorna todos os dados de uma transação
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: endToEndId
+          required: true
+      responses:
+        '200':
+          description: Default Response
+  /v3/icom/mgmt/message/{msgId}:
+    get:
+      summary: Buscar mensagem por MessageId
+      tags:
+        - ICOM
+      description: Retorna o XML de uma mensagem
+      parameters:
+        - schema:
+            type: string
+            pattern: ^[M][0-9]{8}[a-zA-Z0-9]{23}$
+          in: path
+          name: msgId
+          required: true
+      responses:
+        '200':
+          description: Default Response
+  /v3/icom/mgmt/list:
+    get:
+      summary: Listar transações
+      tags:
+        - ICOM
+      description: Retorna todas as transações de um participante em um período
+      parameters:
+        - schema:
+            type: number
+            exclusiveMinimum: true
+            minimum: 0
+            default: 1
+          in: query
+          name: page
+          required: false
+        - schema:
+            type: number
+            exclusiveMinimum: true
+            minimum: 0
+            default: 1000
+          in: query
+          name: limit
+          required: false
+        - schema:
+            type: string
+            format: date-time
+          in: query
+          name: startDate
+          required: true
+        - schema:
+            type: string
+            format: date-time
+          in: query
+          name: endDate
+          required: true
+      responses:
+        '200':
+          description: Default Response
+  /v2/login:
+    post:
+      summary: Efetuar login na plataforma
+      tags:
+        - Legado
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                usuario:
+                  type: string
+                senha:
+                  type: string
+              required:
+                - usuario
+                - senha
+              additionalProperties: false
+        required: true
+      responses:
+        '200':
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  logado:
+                    type: boolean
+                  token:
+                    type: string
+                required:
+                  - logado
+                  - token
+                additionalProperties: false
+  /v2/icom/msg/pacs/{endToEndId}:
+    get:
+      summary: Consultar mensagens de um endToEndId
+      tags:
+        - Legado
+      description: Obtém todas mensagens relacionadas ao endToEndId requisitado
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: endToEndId
+          required: true
+      responses:
+        '200':
+          description: Default Response
+  /v2/icom/msg/pacs002:
+    post:
+      summary: Envio de PACS.002
+      tags:
+        - Legado
+      description: Resposta para as mensagens PACS.008 e PACS.004
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                idInstrucaoOriginal:
+                  type: string
+                idFimAFimOriginal:
+                  $ref: '#/components/schemas/idFimAFim'
+                situacaoDaTransacao:
+                  type: string
+                  enum:
+                    - ACSP
+                    - RJCT
+                codigoDeErro:
+                  type: string
+                  enum:
+                    - AB09
+                    - AB03
+                    - AC03
+                    - AC06
+                    - AC07
+                    - AC14
+                    - AG03
+                    - AM02
+                    - AM09
+                    - BE01
+                    - BE17
+                    - CH11
+                    - DS04
+                    - DS24
+                    - DT05
+                    - RR04
+                    - SL02
+                    - ''
+              required:
+                - idInstrucaoOriginal
+                - idFimAFimOriginal
+                - situacaoDaTransacao
+              additionalProperties: false
+        required: true
+      responses:
+        '200':
+          description: Default Response
+  /v2/icom/msg/pacs004:
+    post:
+      summary: Envio de PACS.004
+      tags:
+        - Legado
+      description: Devolução de valores
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                endToEndID:
+                  type: string
+                idFimAFim:
+                  type: string
+                valor:
+                  type: number
+                  exclusiveMinimum: true
+                  minimum: 0
+                codigoDevolucao:
+                  type: string
+                motivoDevolucao:
+                  type: string
+                  default: ''
+                participanteUsuarioPagador:
+                  type: string
+                participanteUsuarioRecebedor:
+                  type: string
+              required:
+                - idFimAFim
+                - valor
+                - codigoDevolucao
+                - participanteUsuarioPagador
+                - participanteUsuarioRecebedor
+              additionalProperties: false
+        required: true
+      responses:
+        '200':
+          description: Default Response
+  /v2/icom/msg/pacs008:
+    post:
+      summary: Envio de PACS.008
+      tags:
+        - Legado
+      description: Transferência de valores
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                idConciliacaoRecebedor:
+                  type: string
+                  pattern: ^\w+$|^$
+                  nullable: true
+                valor:
+                  type: number
+                  exclusiveMinimum: true
+                  minimum: 0
+                nomeUsuarioPagador:
+                  type: string
+                cpfCnpj:
+                  type: string
+                contaUsuarioPagador:
+                  type: string
+                  pattern: ^\d+$
+                  maxLength: 20
+                agenciaUsuarioPagador:
+                  type: string
+                  pattern: ^\d+$
+                  maxLength: 4
+                tipoContaUsuarioPagador:
+                  type: string
+                  enum:
+                    - CACC
+                    - SLRY
+                    - SVGS
+                    - TRAN
+                participanteDoUsuarioPagador:
+                  type: string
+                  minLength: 8
+                  maxLength: 8
+                participanteDoUsuarioRecebedor:
+                  type: string
+                  minLength: 8
+                  maxLength: 8
+                cpfCnpjUsuarioRecebedor:
+                  $ref: '#/components/schemas/cpfCnpj'
+                contaUsuarioRecebedor:
+                  type: string
+                  pattern: ^\d+$
+                  maxLength: 20
+                agenciaUsuarioRecebedor:
+                  type: string
+                  pattern: ^\d+$
+                  maxLength: 4
+                tipoContaUsuarioRecebedor:
+                  type: string
+                  enum:
+                    - CACC
+                    - SLRY
+                    - SVGS
+                    - TRAN
+                informacoesEntreUsuarios:
+                  type: string
+                  default: ''
+                idContaTransacional:
+                  type: string
+                formaDeIniciacao:
+                  type: string
+                  enum:
+                    - MANU
+                    - DICT
+                    - INIC
+                    - QRDN
+                    - QRES
+                    - QRPG
+                finalidadeDaTransacao:
+                  type: string
+                  enum:
+                    - IPAY
+                    - GSCB
+                    - OTHR
+                modalidadeAgente:
+                  type: string
+                  enum:
+                    - AGFSS
+                    - AGTEC
+                    - AGTOT
+                prestadorDoServicoDeSaque:
+                  type: string
+                informacoesValor:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      valor:
+                        type: number
+                        exclusiveMinimum: true
+                        minimum: 0
+                      tipo:
+                        type: string
+                        enum:
+                          - VLCP
+                          - VLDN
+                    required:
+                      - valor
+                      - tipo
+                    additionalProperties: false
+                tipoPrioridadePagamento:
+                  type: string
+                  enum:
+                    - PAGPRI
+                    - PAGFRD
+                    - PAGAGD
+                  default: PAGPRI
+                endToEndID:
+                  $ref: '#/components/schemas/cpfCnpj'
+                cnpjIniciadorPagamento:
+                  $ref: '#/components/schemas/cpfCnpj'
+                recebimento:
+                  type: string
+                  format: date-time
+              required:
+                - valor
+                - nomeUsuarioPagador
+                - cpfCnpj
+                - contaUsuarioPagador
+                - agenciaUsuarioPagador
+                - tipoContaUsuarioPagador
+                - participanteDoUsuarioPagador
+                - participanteDoUsuarioRecebedor
+                - cpfCnpjUsuarioRecebedor
+                - contaUsuarioRecebedor
+                - agenciaUsuarioRecebedor
+                - tipoContaUsuarioRecebedor
+                - formaDeIniciacao
+                - finalidadeDaTransacao
+              additionalProperties: false
+        required: true
+      responses:
+        '200':
+          description: Default Response
+  /v2/dict/infracoes:
+    post:
+      summary: Listar Relatos de Infração
+      tags:
+        - Legado
+      description: Obtém lista de relatos de infração em que o participante é parte.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                pagina:
+                  type: number
+                  exclusiveMinimum: true
+                  minimum: 0
+                  default: 1
+                filtro:
+                  type: string
+                  default: '%'
+              additionalProperties: false
+      responses:
+        '200':
+          description: Default Response
+  /v4/dict/antifraud/fraud-markers:
+    post:
+      summary: Criar Marcação de Fraude
+      tags:
+        - DICT-Antifraude
+      description: >-
+        Cria uma marcação de fraude para um usuário ou chave específica. O
+        identificador da marcação (RequestId) é gerado automaticamente pelo
+        backend e retornado na resposta. Não envie RequestId no corpo da
+        requisição: campos extras são rejeitados com 400 Validation Error.
+        Observação: ao fechar uma infração MED como AGREED, o DICT gera a
+        marcação automaticamente — nesse caso o FraudMarkerId vem no response
+        do fechamento/consulta da infração e não precisa ser criado via este
+        endpoint.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                FraudMarker:
+                  type: object
+                  properties:
+                    TaxIdNumber:
+                      type: string
+                      description: CPF/CNPJ do usuário marcado
+                    FraudType:
+                      type: string
+                      enum:
+                        - APPLICATION_FRAUD
+                        - MULE_ACCOUNT
+                        - SCAMMER_ACCOUNT
+                        - OTHER
+                        - UNKNOWN
+                    Key:
+                      type: string
+                      maxLength: 77
+                      description: Chave PIX associada à fraude (opcional)
+                  required:
+                    - TaxIdNumber
+                    - FraudType
+              required:
+                - FraudMarker
+      responses:
+        '200':
+          description: >-
+            Marcação de fraude criada com sucesso. O campo RequestId da
+            resposta contém o identificador da marcação gerado pelo backend.
+        '400':
+          description: Requisição inválida
+        '403':
+          description: Acesso negado
+        '503':
+          description: Serviço indisponível
+
+  /v4/dict/antifraud/fraud-markers/{FraudMarkerId}:
+    get:
+      summary: Consultar Marcação de Fraude
+      tags:
+        - DICT-Antifraude
+      description: >-
+        Obtém detalhes de uma marcação de fraude específica. Marcações geradas
+        automaticamente ao fechar uma infração MED como AGREED também são
+        consultáveis por este endpoint; o FraudMarkerId é o mesmo retornado no
+        fechamento/consulta da infração (e como RequestId na criação manual).
+      parameters:
+        - name: FraudMarkerId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Detalhes da marcação de fraude
+        '404':
+          description: Marcação não encontrada
+
+  /v4/dict/antifraud/fraud-markers/{FraudMarkerId}/cancel:
+    post:
+      summary: Cancelar Marcação de Fraude
+      tags:
+        - DICT-Antifraude
+      description: Cancela uma marcação de fraude existente.
+      parameters:
+        - name: FraudMarkerId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Marcação de fraude cancelada com sucesso
+        '403':
+          description: Acesso negado
+        '404':
+          description: Marcação não encontrada
+        '503':
+          description: Serviço indisponível
+
+  /v4/dict/antifraud/statistics/persons/{TaxIdNumber}:
+    get:
+      summary: Consultar Estatísticas de Pessoa
+      tags:
+        - DICT-Antifraude
+      description: Obtém dados estatísticos de um usuário final.
+      parameters:
+        - name: TaxIdNumber
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^[0-9]{11,14}$
+      responses:
+        '200':
+          description: Estatísticas do usuário
+        '403':
+          description: Acesso negado
+        '503':
+          description: Serviço indisponível
+
+  /v4/dict/antifraud/statistics/entries/{Key}:
+    get:
+      summary: Consultar Estatísticas de Chave Registrada
+      tags:
+        - DICT-Antifraude
+      description: Obtém dados estatísticos relacionados a uma chave registrada.
+      parameters:
+        - name: Key
+          in: path
+          required: true
+          schema:
+            type: string
+            maxLength: 77
+      responses:
+        '200':
+          description: Estatísticas da chave
+        '403':
+          description: Acesso negado
+        '503':
+          description: Serviço indisponível
+
+###############################################
+
+       ## ENDPOINT Referente ao MED 2.0 ##      
+
+###############################################
+  /v4/dict/funds-recovery/list:
+    post:
+      summary: Lista Recuperação de Valores
+      tags:
+        - DICT-MED 2.0
+      description: Lista por período a recuperação de valores.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                InitialDate:
+                  type: string
+                  format: date-time
+                FinalDate:
+                  type: string
+                  format: date-time
+                Page:
+                  type: number
+                  default: 1
+                PerPage:
+                  type: number
+                  maximum: 350
+                  default: 10
+                Filter:
+                  type: string
+                QueryFilter:
+                  type: array
+                  default: []
+              additionalProperties: false
+              required:
+                - InitialDate
+                - FinalDate
+              example:
+                {
+                  "meta": {
+                    "Total": 15,
+                    "PerPage": 1,
+                    "CurrentPage": 1,
+                    "FirstPage": 1,
+                    "LastPage": 15,
+                    "NextPage": 2,
+                    "PrevPage": null
+                  }
+                }
+      responses:
+        '200':
+          description: Default Response
+  /v4/dict/funds-recovery:
+    post:
+      summary: Criar uma Recuperação de Valores
+      tags:
+        - DICT-MED 2.0
+      description: Criar uma Recuperação de Valores
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                RootTransactionId:
+                  type: string
+                  description: Transação Raiz, reportada como fraudulenta.
+                  minLength: 32
+                  maxLength: 32
+                SituationType:
+                  type: string
+                  description: Tipo de situação que deu origem à Recuperação de Valores.
+                  enum: 
+                    - SCAM
+                    - ACCOUNT_TAKEOVER
+                    - COERCION
+                    - FRAUDULENT_ACCESS
+                    - OTHER
+                    - UNKNOWN
+                ReportDetails:
+                  type: string
+                  description: Detalhes que possam ajudar o PSP contraparte na análise. Obrigatório caso SituationType=OTHER
+                  maxLength: 2000
+                ContactEmail:
+                  type: string
+                  format: email
+                  description: E-mail para contato.
+                  pattern: ^[a-z0-9.!#$%&'*+\/=?^_`{|}~-]+@[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*$
+                ContactPhone:
+                  type: string
+                  format: phone
+                  description: Telefone para contato.
+                  pattern: ^\+?[1-9]\d{1,14}$
+                FlowType:
+                  type: string
+                  enum: 
+                    - AUTOMATED
+                    - INTERACTIVE
+                MinTransactionAmount:
+                  type: number
+                  description: Valor mínimo da transação para ser incluída no grafo.
+                  default: "200.00"                  
+                MaxTransactions:
+                  type: integer
+                  description: Número máximo de transações a serem incluídas no grafo.
+                  exclusiveMaximum: true
+                  default: 500
+                HopWindow:
+                  type: string
+                  description: Janela de tempo entre transação que entra em uma conta e transação que sai.
+                  default: "PT24H"
+                MaxHops: 
+                  type: integer
+                  description: Profundidade máxima do grafo.
+                  exclusiveMinimum: true
+                  default: 5
+                  maximum: 10
+              required:
+                - RootTransactionId
+                - SituationType
+                - ContactEmail
+                - ContactPhone
+                - FlowType
+                - MinTransactionAmount
+                - MaxTransactions
+                - HopWindow
+                - MaxHops
+              additionalProperties: false
+              example:
+                RootTransactionId: E123456782023010112345678901234
+                SituationType: SCAM
+                ReportDetails: Pagamento realizado após engenharia social.
+                ContactEmail: fraude@exemplo.com
+                ContactPhone: "+5511999999999"
+                FlowType: AUTOMATED
+                MinTransactionAmount: 200.00
+                MaxTransactions: 500
+                HopWindow: PT24H
+                MaxHops: 5
+        required: true
+      responses:
+        '200':
+          description: Default Response
+  /v4/dict/funds-recovery/{id}:
+    get:
+      summary: Consultar Recuperação de Valores
+      tags:
+        - DICT-MED 2.0
+      description: Obtém detalhes de uma recuperação de valores. 
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          in: path
+          name: id
+          required: true
+      responses:
+        '200':
+          description: Default Response
+  /v4/dict/funds-recovery/{id}/tracking-graph:
+    get:
+      summary: Consultar Grafo de Rastreamento
+      tags:
+        - DICT-MED 2.0
+      description: Obtém grafo de rastreamento da recuperação de valores. 
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          in: path
+          name: id
+          required: true
+      responses:
+        '200':
+          description: Default Response
+  /v4/dict/funds-recovery/{id}/infraction-reports:
+    get:
+      summary: Listar Notificações de Infração
+      tags:
+        - DICT-MED 2.0
+      description: >-
+        Obtém lista de notificações de infração de uma recuperação de valores.
+        Quando a infração foi aceita (AGREED), o campo FraudMarkerId contém o
+        UUID da marcação de fraude vinculada; caso contrário, pode retornar
+        string vazia.
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          in: path
+          name: id
+          required: true
+      responses:
+        '200':
+          description: >-
+            Lista de infrações da recuperação. Itens AGREED podem incluir
+            FraudMarkerId da marcação automática do DICT.
+  /v4/dict/funds-recovery/{id}/refunds:
+    get:
+      summary: Listar Solicitações de Devolução
+      tags:
+        - DICT-MED 2.0
+      description: Obtém lista de solicitações de devolução de uma recuperação de valores.
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          in: path
+          name: id
+          required: true
+      responses:
+        '200':
+          description: Default Response
+  /v4/dict/funds-recovery/{id}/refund:
+    post:
+      summary: Solicitar Devolução em Recuperação de Valores
+      tags:
+        - DICT-MED 2.0
+      description: Obtém lista de solicitações de devolução de uma recuperação de valores.
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          in: path
+          name: id
+          required: true
+      responses:
+        '200':
+          description: Default Response
+  /v4/dict/funds-recovery/{id}/cancel:
+    post:
+      summary: Cancelar Recuperação de Valores
+      tags:
+        - DICT-MED 2.0
+      description: Cancela uma recuperação de valores.
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          in: path
+          name: id
+          required: true
+      responses:
+        '200':
+          description: Default Response
+  /v4/dict/event-notifications/pending:
+    get:
+      summary: Listar Notificações de Eventos
+      tags:
+        - DICT-Notificações de Eventos
+      description: Lista notificações de eventos.
+      responses:
+        '200':
+          description: Default Response
+  /v4/dict/event-notifications/processed:
+      post:
+        summary: Marca uma Notificação Processada
+        tags:
+          - DICT-Notificações de Eventos
+        description: Marca uma notificação de evento como processada.
+        requestBody:
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ids: 
+                    type: array
+                required:
+                  - ids
+                additionalProperties: false
+                example:
+                  {
+                    "success": true
+                  }
+          required: true
+        responses:
+          '200':
+            description: Default Response

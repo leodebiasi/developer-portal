@@ -1,0 +1,214 @@
+---
+title: "Authentication & mTLS"
+description: "Este guia descreve o contrato atual de autenticação da Banking API para integrações server-to-server."
+---
+Este guia descreve o contrato atual de autenticação da Banking API para integrações server-to-server.
+
+## 🔐 Visão Geral
+
+Para consumir a Banking API, sua aplicação precisa apresentar duas credenciais na mesma chamada:
+
+1. `client_id` e `client_secret`
+2. um certificado de cliente válido via mTLS
+
+O token só é emitido quando a Banking API valida simultaneamente:
+
+- credencial ativa
+- certificado vinculado à credencial
+- IP de origem permitido
+
+## 🎯 Endpoint atual
+
+**POST** `/auth/token`
+
+### Corpo da requisição
+
+```json
+{
+  "client_id": "seu-client-id",
+  "client_secret": "seu-client-secret",
+  "grant_type": "client_credentials"
+}
+```
+
+### Regras do contrato
+
+| Campo | Obrigatório | Observação |
+| --- | --- | --- |
+| `client_id` | Sim | Identificador da credencial |
+| `client_secret` | Sim | Segredo gerado no CORE |
+| `grant_type` | Sim | Deve ser `client_credentials` |
+
+## 🧭 Como funciona
+
+```text
+1. Seu sistema abre conexão HTTPS com mTLS
+2. Envia o certificado de cliente
+3. Faz POST /auth/token com client_id + client_secret
+4. A Banking API valida certificado, IP e credencial
+5. A Banking API retorna access_token
+```
+
+## 🪪 Provisionamento no CORE
+
+Antes de chamar o endpoint, você precisa provisionar o acesso no CORE:
+
+1. Criar ou cadastrar um certificado de cliente
+2. Criar a credencial
+3. Definir os IPs permitidos
+4. Vincular o certificado à credencial
+5. Copiar o `client_secret`
+
+Uma credencial pode ter até **2 certificados ativos**, permitindo rotação controlada.
+
+> **Importante**
+>
+> O certificado usado na conexão mTLS deve ser o mesmo certificado vinculado à credencial no CORE.
+
+## 🔑 Exemplo com `curl`
+
+```bash
+curl -X POST https://secureapi.onz.finance/auth/token \
+  --cert client.crt \
+  --key client.key \
+  --cacert ca.crt \
+  -H "Content-Type: application/json" \
+  -d '{
+    "client_id": "seu-client-id",
+    "client_secret": "seu-client-secret",
+    "grant_type": "client_credentials"
+  }'
+```
+
+## 📦 Exemplo com `PFX`
+
+Se você recebeu um `client.pfx`, use o formato suportado pela sua ferramenta.
+
+```bash
+curl -X POST https://secureapi.onz.finance/auth/token \
+  --cert-type P12 \
+  --cert client.pfx:senha-do-pfx \
+  --cacert ca.crt \
+  -H "Content-Type: application/json" \
+  -d '{
+    "client_id": "seu-client-id",
+    "client_secret": "seu-client-secret",
+    "grant_type": "client_credentials"
+  }'
+```
+
+## ✅ Resposta de sucesso
+
+```json
+{
+  "access_token": "eyJhbGciOi...",
+  "token_type": "Bearer",
+  "expires_in": 3600
+}
+```
+
+## 🔄 Como usar o token
+
+Depois de obter o token, continue usando o mesmo certificado mTLS nas chamadas protegidas:
+
+```bash
+curl -X GET https://secureapi.onz.finance/accounts/123/balance \
+  --cert client.crt \
+  --key client.key \
+  --cacert ca.crt \
+  -H "Authorization: Bearer SEU_ACCESS_TOKEN"
+```
+
+## 💻 Exemplo em Node.js
+
+```typescript
+import axios from 'axios';
+import https from 'https';
+import { readFileSync } from 'fs';
+
+class TokenManager {
+  private token: string | null = null;
+  private expiresAt = 0;
+  private httpsAgent = new https.Agent({
+    cert: readFileSync(process.env.CERT_PATH!),
+    key: readFileSync(process.env.KEY_PATH!),
+    ca: readFileSync(process.env.CA_PATH!),
+  });
+
+  async getToken(): Promise<string> {
+    if (this.token && Date.now() < this.expiresAt - 5 * 60 * 1000) {
+      return this.token;
+    }
+
+    const response = await axios.post(
+      'https://secureapi.onz.finance/auth/token',
+      {
+        client_id: process.env.CLIENT_ID!,
+        client_secret: process.env.CLIENT_SECRET!,
+        grant_type: 'client_credentials',
+      },
+      {
+        headers: { 'Content-Type': 'application/json' },
+        httpsAgent: this.httpsAgent,
+      },
+    );
+
+    this.token = response.data.access_token;
+    this.expiresAt = Date.now() + response.data.expires_in * 1000;
+
+    return this.token;
+  }
+
+  getAgent() {
+    return this.httpsAgent;
+  }
+}
+```
+
+## 🧯 Troubleshooting
+
+### `401 Invalid Credentials`
+
+Verifique:
+
+- `client_id`
+- `client_secret`
+- se a credencial está ativa
+
+### `401 Invalid Client Certificate`
+
+Verifique:
+
+- se o certificado usado na requisição é o mesmo vinculado à credencial
+- se o certificado não expirou
+- se a chave privada corresponde ao certificado
+- se o certificado pertence à cadeia correta do ambiente
+
+### `403 Forbidden`
+
+Verifique:
+
+- se o IP público de origem está na allowlist da credencial
+- se a chamada está saindo pelo IP esperado
+
+### Falha de handshake TLS
+
+Verifique:
+
+- se o cliente está enviando `cert` e `key` corretos
+- se o `PFX` está com a senha correta
+- se a sua ferramenta está confiando na CA do ambiente
+
+## 🛡️ Boas práticas
+
+1. Nunca exponha `client_secret` no frontend
+2. Armazene certificados em secret manager ou cofre seguro
+3. Renove o token antes da expiração
+4. Faça rotação de certificado antes do vencimento
+5. Reutilize o mesmo material mTLS no token e nas chamadas protegidas
+
+## 📚 Próximos Passos
+
+1. [Getting Started](/banking/getting-started)
+2. [Partner Onboarding](/banking/partner-onboarding)
+3. [Errors & Retries](/banking/errors-and-retries)

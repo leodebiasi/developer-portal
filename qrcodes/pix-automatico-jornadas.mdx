@@ -1,0 +1,147 @@
+---
+title: "Jornadas de Autorização do Pix Automático"
+description: "O Pix Automático permite que usuários recebedores realizem cobranças periódicas de forma automatizada, com autorização prévia do usuário pagador. O Banco Central do Brasil define 4…"
+---
+O Pix Automático permite que usuários recebedores realizem cobranças periódicas de forma automatizada, com autorização prévia do usuário pagador. O Banco Central do Brasil define 4 jornadas distintas para a autorização de recorrências, cada uma com características específicas de ativação.
+
+Esta documentação apresenta um guia passo a passo para implementar cada uma das jornadas de autorização do Pix Automático, incluindo os endpoints necessários e a ordem de execução.
+
+**Referência oficial:** [Guia de Implementação do Pix Automático - Banco Central do Brasil](https://liftchallenge.bcb.gov.br/content/estabilidadefinanceira/pix/automatico/guia_pix_automatico.pdf)
+
+---
+
+## Jornada 1 - Autorização via Notificação Externa
+
+Na **Jornada 1**, o usuário pagador aceita a recorrência através de uma notificação externa ao ecossistema Pix. Para mais informações sobre esta jornada, confira o tópico 3.2 do [Guia de Implementação do Pix Automático](https://liftchallenge.bcb.gov.br/content/estabilidadefinanceira/pix/automatico/guia_pix_automatico.pdf).
+
+![Diagrama Jornada 1 - Autorização via Notificação Externa](/images/pix-automatico/jornada-1.png)
+
+*Nota: Diagrama conforme especificado pelo Banco Central do Brasil. Para mais detalhes, consulte o [Guia de Implementação do Pix Automático](https://liftchallenge.bcb.gov.br/content/estabilidadefinanceira/pix/automatico/guia_pix_automatico.pdf).*
+
+### Ordem de Execução
+
+Para implementar a Jornada 1, você precisará utilizar os seguintes endpoints na ordem especificada:
+
+1. **Criar a recorrência**
+
+   Inicialmente, utilize o endpoint de **[`criação de recorrência`](/api-reference/qrcodes#tag/Rec/paths/~1rec/post)** para criar a recorrência com os dados do contrato especificados na documentação.
+
+2. **Criar solicitação de confirmação**
+   
+   Após a criação da recorrência, crie uma **[`solicitação de confirmação de recorrência`](/api-reference/qrcodes#tag/SolicRec/paths/~1solicrec/post)**. Após essa ação, serão enviadas as notificações ao usuário pagador através do seu canal externo.
+
+3. **Gerenciar recorrência e solicitação de confirmação**
+   
+   Opcionalmente, poderão ser utilizados os demais endpoints para o gerenciamento, consulta e cancelamento de **[recorrências](/api-reference/qrcodes#tag/Rec)** e **[solicitações de confirmação](/api-reference/qrcodes#tag/SolicRec)**.
+
+---
+
+## Jornada 2 - Autorização via QR Code de Recorrência
+
+Na **Jornada 2**, o usuário pagador aceita a recorrência através da leitura de um QR Code específico da recorrência. O pagador escaneia o QR Code em seu aplicativo bancário e confirma a autorização diretamente no ambiente Pix. Para mais informações sobre esta jornada, confira o tópico 3.3 do [Guia de Implementação do Pix Automático](https://liftchallenge.bcb.gov.br/content/estabilidadefinanceira/pix/automatico/guia_pix_automatico.pdf).
+
+![Diagrama Jornada 2 - Autorização via QR Code de Recorrência](/images/pix-automatico/jornada-2.png)
+
+*Nota: O diagrama acima representa o fluxo da Jornada 2 conforme especificado pelo Banco Central do Brasil. Para visualizar o diagrama oficial, consulte a [documentação do Pix Automático](https://liftchallenge.bcb.gov.br/content/estabilidadefinanceira/pix/automatico/guia_pix_automatico.pdf).*
+
+### Ordem de Execução
+
+Para implementar a Jornada 2, você precisará utilizar os seguintes endpoints na ordem especificada:
+
+1. **Criar a recorrência**
+
+   Inicialmente, utilize o endpoint de **[`criação de recorrência`](/api-reference/qrcodes#tag/Rec/paths/~1rec/post)** para criar a recorrência com os dados do contrato especificados na documentação.
+
+2. **Consultar recorrência para obter QR Code**
+
+   Consulte a recorrência criada utilizando o endpoint de **[`consulta de recorrência`](/api-reference/qrcodes#tag/Rec/paths/~1rec~1{idRec}/get)** para obter os dados do QR Code que será apresentado ao pagador. Os dados do QR Code serão encontrados no campo `dadosQR` retornado no response da requisição.
+
+   **Importante:** Ao consultar a recorrência para obter o QR Code da Jornada 2 não devemos preencher o campo `txid` no Query Parameters. Esse campo será utilizado apenas na Jornada 3 e Jornada 4.
+
+3. **Gerenciar recorrência**
+
+   Opcionalmente, poderão ser utilizados os demais endpoints para o gerenciamento, consulta e cancelamento de **[recorrências](/api-reference/qrcodes#tag/Rec)**.
+
+---
+
+## Jornada 3 - Autorização via QR Code Composto com Cobrança Imediata
+
+Na **Jornada 3**, o usuário pagador inicia a recorrência através da leitura de um QR Code composto que combina uma cobrança imediata com a recorrência. O pagador paga a cobrança imediata e, ao mesmo tempo, autoriza as recorrências futuras. Para mais informações sobre esta jornada, confira o tópico 3.4 do [Guia de Implementação do Pix Automático](https://liftchallenge.bcb.gov.br/content/estabilidadefinanceira/pix/automatico/guia_pix_automatico.pdf).
+
+![Diagrama Jornada 3 - Autorização via QR Code Composto com Cobrança Imediata](/images/pix-automatico/jornada-3.png)
+
+*Nota: O diagrama acima representa o fluxo da Jornada 3 conforme especificado pelo Banco Central do Brasil. Para visualizar o diagrama oficial, consulte a [documentação do Pix Automático](https://liftchallenge.bcb.gov.br/content/estabilidadefinanceira/pix/automatico/guia_pix_automatico.pdf).*
+
+### Ordem de Execução
+
+Para implementar a Jornada 3, você precisará utilizar os seguintes endpoints na ordem especificada:
+
+1. **Criar a recorrência**
+
+   Inicialmente, utilize o endpoint de **[`criação de recorrência`](/api-reference/qrcodes#tag/Rec/paths/~1rec/post)** para criar a recorrência com os dados do contrato especificados na documentação.
+
+2. **Criar cobrança imediata**
+
+   Crie uma cobrança imediata utilizando o endpoint de **[`criação de cobrança imediata`](/api-reference/qrcodes#tag/Cob/paths/~1cob~1{txid}/put)** que será combinada com a recorrência no QR Code composto.
+
+3. **Consultar recorrência para obter QR Code composto**
+
+   Consulte a recorrência informando o campo `txid` da cobrança imediata utilizando o endpoint de **[`consulta de recorrência`](/api-reference/qrcodes#tag/Rec/paths/~1rec~1{idRec}/get)** para obter os dados do QR Code composto. Os dados do QR Code serão encontrados no campo `dadosQR` retornado no response da requisição.
+
+4. **Gerenciar recorrência e cobranças**
+
+   Opcionalmente, poderão ser utilizados os demais endpoints para o gerenciamento, consulta e cancelamento de **[recorrências](/api-reference/qrcodes#tag/Rec)** e **[cobranças imediatas](/api-reference/qrcodes#tag/Cob)**.
+
+---
+
+## Jornada 4 - Autorização via QR Code Composto com Cobrança com Vencimento
+
+Na **Jornada 4**, o usuário pagador escolhe aderir à recorrência através da leitura de um QR Code composto relacionado a uma cobrança com vencimento. O pagador visualiza a cobrança com vencimento e, ao pagá-la, autoriza as recorrências futuras. Para mais informações sobre esta jornada, confira o tópico 3.5 do [Guia de Implementação do Pix Automático](https://liftchallenge.bcb.gov.br/content/estabilidadefinanceira/pix/automatico/guia_pix_automatico.pdf).
+
+![Diagrama Jornada 4 - Autorização via QR Code Composto com Cobrança com Vencimento](/images/pix-automatico/jornada-4.png)
+
+*Nota: O diagrama acima representa o fluxo da Jornada 4 conforme especificado pelo Banco Central do Brasil. Para visualizar o diagrama oficial, consulte a [documentação do Pix Automático](https://liftchallenge.bcb.gov.br/content/estabilidadefinanceira/pix/automatico/guia_pix_automatico.pdf).*
+
+### Ordem de Execução
+
+Para implementar a Jornada 4, você precisará utilizar os seguintes endpoints na ordem especificada:
+
+1. **Criar a recorrência**
+
+   Inicialmente, utilize o endpoint de **[`criação de recorrência`](/api-reference/qrcodes#tag/Rec/paths/~1rec/post)** para criar a recorrência com os dados do contrato especificados na documentação.
+
+2. **Criar cobrança com vencimento**
+
+   Crie uma cobrança com vencimento utilizando o endpoint de **[`criação de cobrança com vencimento`](/api-reference/qrcodes#tag/CobV/paths/~1cobv~1{txid}/put)** que será combinada com a recorrência no QR Code composto.
+
+3. **Consultar recorrência para obter QR Code composto**
+
+   Consulte a recorrência informando o `txid` da cobrança com vencimento utilizando o endpoint de **[`consulta de recorrência`](/api-reference/qrcodes#tag/Rec/paths/~1rec~1{idRec}/get)** para obter os dados do QR Code composto. Os dados do QR Code serão encontrados no campo `dadosQR` retornado no response da requisição.
+
+4. **Gerenciar recorrência e cobranças**
+
+   Opcionalmente, poderão ser utilizados os demais endpoints para o gerenciamento, consulta e cancelamento de **[recorrências](/api-reference/qrcodes#tag/Rec)** e **[cobranças com vencimento](/api-reference/qrcodes#tag/CobV)**.
+
+---
+
+## Resumo Comparativo das Jornadas
+
+| Jornada | Método de Autorização | QR Code Necessário | Cobrança Inicial |
+|---------|----------------------|-------------------|------------------|
+| **Jornada 1** | Notificação externa ao ecossistema Pix | Não | Não |
+| **Jornada 2** | Leitura de QR Code de recorrência | Sim (QR Code simples) | Não |
+| **Jornada 3** | Leitura de QR Code composto | Sim (QR Code composto) | Sim (Cobrança imediata) |
+| **Jornada 4** | Leitura de QR Code composto | Sim (QR Code composto) | Sim (Cobrança com vencimento) |
+
+---
+
+## Próximos Passos
+
+Após a autorização e ativação da recorrência através de qualquer uma das jornadas:
+
+1. **Monitorar recorrência:** Utilize **[`webhooks de recorrência`](/api-reference/qrcodes#tag/WebhookRec)** para receber notificações sobre mudanças de status
+2. **Criar cobranças recorrentes:** Utilize o endpoint de **[`criação de cobrança recorrente`](/api-reference/qrcodes#tag/CobR/paths/~1cobr~1{txid}/put)** para gerar as cobranças periódicas conforme o calendário definido
+3. **Consultar cobranças:** Utilize o endpoint de **[`consulta de cobrança recorrente`](/api-reference/qrcodes#tag/CobR/paths/~1cobr~1{txid}/get)** para verificar o status das cobranças geradas
+4. **Gerenciar recorrência:** Utilize o endpoint de **[`atualização de recorrência`](/api-reference/qrcodes#tag/Rec/paths/~1rec~1{idRec}/patch)** para atualizar dados da recorrência quando necessário
+
+Para mais informações sobre os endpoints disponíveis, consulte a [documentação completa da API QRCodes](/api-reference/qrcodes).

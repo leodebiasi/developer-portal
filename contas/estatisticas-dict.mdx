@@ -1,0 +1,74 @@
+---
+title: "Estatísticas DICT"
+description: "A API de Contas (/api/v2) expõe as consultas de estatísticas antifraude do DICT, equivalentes às operações da API DICT do Banco Central."
+---
+A API de Contas (`/api/v2`) expõe as consultas de estatísticas antifraude do DICT, equivalentes às operações da [API DICT do Banco Central](https://www.bcb.gov.br/content/estabilidadefinanceira/pix/API-DICT.html#tag/Statistics).
+
+| Operação | Método e path | Scope |
+| --- | --- | --- |
+| Consultar estatísticas de pessoa | `GET /statistics/person/{taxIdNumber}` | `pix.read` |
+| Consultar estatísticas de chave | `GET /statistics/key/{key}` | `pix.read` |
+
+Todas as requisições abaixo usam:
+
+- `Authorization: Bearer <access_token>`
+- `x-account-id: <id da conta>` (quando a credencial for BaaS)
+
+Base URL: `https://secureapi.onz.finance/api/v2`
+
+---
+
+## Janelas temporais
+
+Os contadores agregados consideram três períodos:
+
+| Campo | Significado |
+| --- | --- |
+| `d90` | Últimos 89 dias, incluindo o dia corrente |
+| `m12` | Últimos 12 meses, sem incluir o mês corrente |
+| `m60` | Últimos 60 meses, sem incluir o mês corrente |
+
+---
+
+## Consultar estatísticas de pessoa
+
+Retorna liquidações SPI, marcadores de fraude, notificações de infração e quantidade de contas registradas para um CPF ou CNPJ.
+
+```bash
+curl --location 'https://secureapi.onz.finance/api/v2/statistics/person/12345678901' \
+  --header 'Authorization: Bearer <access_token>'
+```
+
+| Path param | Descrição |
+| --- | --- |
+| `taxIdNumber` | CPF (11 dígitos) ou CNPJ (14 dígitos), apenas números |
+
+A resposta segue o formato DICT (`GetPersonStatisticsResponse`), com `PersonStatistics` contendo `Spi`, `FraudMarkers`, `InfractionReports` e `Entries`.
+
+---
+
+## Consultar estatísticas de chave registrada
+
+Retorna estatísticas do dono da chave (`OwnerStatistics`) e da própria chave (`KeyStatistics`).
+
+```bash
+curl --location 'https://secureapi.onz.finance/api/v2/statistics/key/12345678901' \
+  --header 'Authorization: Bearer <access_token>'
+```
+
+Exemplo com telefone (URL-encoded):
+
+```bash
+curl --location 'https://secureapi.onz.finance/api/v2/statistics/key/%2B5511999999999' \
+  --header 'Authorization: Bearer <access_token>'
+```
+
+| Path param | Descrição |
+| --- | --- |
+| `key` | Chave Pix (CPF, CNPJ, telefone E.164, e-mail ou EVP). Encode caracteres especiais na URL. |
+
+---
+
+## Referência
+
+Consulte a referência da API de Contas (categoria **Estatísticas**) para schemas e códigos de erro detalhados dos endpoints `/statistics/person/{taxIdNumber}` e `/statistics/key/{key}`.

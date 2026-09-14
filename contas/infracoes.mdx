@@ -1,0 +1,34 @@
+---
+title: "Infrações"
+description: "Em casos de suspeita de fraude em uma transação, o processo para tentar recuperar os valores transferidos envolve as seguintes etapas"
+---
+Em casos de suspeita de fraude em uma transação, o processo para tentar recuperar os valores transferidos envolve as seguintes etapas:
+
+### Relato do Pagador
+
+O usuário pagador deve entrar em contato com o seu Provedor de Serviços de Pagamento (PSP) por meio dos canais de atendimento disponíveis. Nesse contato, o pagador deve relatar a suspeita de fraude, golpe ou crime, e solicitar a devolução dos valores transferidos.
+
+### Notificação de Infração
+
+Após a reclamação, o PSP pagador deve registrar uma notificação de infração no Diretório de Identificadores de Contas Transacionais (DICT) o mais rápido possível, preferencialmente em até 10 minutos após o atendimento. O PSP não deve analisar o mérito da reclamação nem solicitar documentos comprobatórios (como boletim de ocorrência) nesse momento. A criação imediata da notificação aumenta a chance de recuperação dos valores.
+
+- Após a notificação, o PSP pagador poderá solicitar documentos adicionais ao cliente e avaliar o mérito do caso para confirmar se houve fraude, golpe ou crime.
+- A transação original deve ter ocorrido há no máximo 80 dias para que a notificação seja válida.
+
+### Bloqueio de Recursos pelo PSP Recebedor
+
+O PSP recebedor, ao identificar a notificação de infração, deve bloquear imediatamente o valor total da transação na conta do usuário recebedor, em até 10 minutos após o recebimento da notificação.
+
+- Se o saldo da conta for menor que o valor da transação, o saldo total disponível deve ser bloqueado.
+- O PSP recebedor também deve notificar seu cliente sobre o bloqueio realizado.
+
+### Análise da Infração pelo PSP Recebedor
+
+O PSP recebedor tem até 7 dias corridos, a partir da abertura da notificação, para analisar se houve, de fato, fraude, golpe ou crime. Após essa análise
+
+- Se for constatada a infração, a notificação será fechada , e o bloqueio dos recursos será mantido.
+- Caso contrário, se não for identificada fraude, a notificação será fechada, e os recursos serão desbloqueados.
+
+### Encerramento da Notificação
+
+O PSP pagador será notificado sobre o encerramento da infração, independentemente do resultado

@@ -1,0 +1,31 @@
+---
+title: "Registrar desfecho"
+description: "Após acompanhar na CTPS Digital se o trabalhador aceitou ou recusou a proposta, registre o desfecho."
+---
+Após acompanhar na CTPS Digital se o trabalhador aceitou ou recusou a proposta, registre o desfecho.
+
+**Endpoint:** `POST /econsigado/employee/clt-leads/{id}/outcome`  
+**Scope:** `econsignado.write`
+
+```bash
+curl --location 'https://secureapi.onz.finance/api/v2/econsigado/employee/clt-leads/550e8400-e29b-41d4-a716-446655440000/outcome' \
+  --header 'Authorization: Bearer <access_token>' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "accepted": true
+  }'
+```
+
+| Campo | Obrigatório | Descrição |
+| --- | --- | --- |
+| `accepted` | Sim | `true` quando o trabalhador aceitou; `false` quando recusou |
+
+O desfecho só pode ser registrado quando o lead está em `PROPOSAL_SENT` e pela mesma conta que enviou as propostas.
+
+## Erros relevantes
+
+| HTTP | Situação |
+| --- | --- |
+| `403` | Conta não habilitada ou scope insuficiente |
+| `404` | Lead não encontrado |
+| `409` | Lead não pertence à conta ou não está em `PROPOSAL_SENT` |

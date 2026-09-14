@@ -1,0 +1,53 @@
+---
+title: "Perguntas Frequentes"
+description: "Conforme a Resolução BCB Nº 1, de 12 de agosto de 2020, na Seção II - \"Do acesso\", existem regras específicas sobre quem pode acessar as informações do Diretório de Identificadores…"
+---
+## Posso consultar chaves Pix?
+
+Conforme a Resolução BCB Nº 1, de 12 de agosto de 2020, na Seção II - "Do acesso", existem regras específicas sobre quem pode acessar as informações do Diretório de Identificadores de Contas Transacionais (DICT). Nesta resolução, observa-se que o acesso às informações pode ser obtido pelos participantes diretos e indiretos. O BCB deixa claro quem pode ter acesso ao ambiente, e tudo que não está disposto na normativa não pode ser executado. Portanto, quem não se enquadra como participante direto nem indireto não tem acesso a estas informações.
+
+## Como posso identificar a origem dos disparos de webhook?
+
+Utilizamos IPs dinâmicos para enviar nossos webhooks, o que significa que os endereços IP podem mudar a cada envio. Para garantir a segurança e a correta identificação dos webhooks enviados por nossa plataforma, recomendamos que você configure um header personalizado no webhook. Veja abaixo um exemplo de configuração:
+
+```json
+{
+  "uri": "{your_webhook_url}",
+  "enabled": true,
+  "headers": {
+    "headerName": "{your_header_name}"
+  }
+}
+```
+
+Ao configurar o webhook dessa maneira, sempre que enviarmos um webhook, incluiremos o header configurado por você, permitindo a identificação e autenticação das mensagens.
+
+# **Configurando Certificado MTLS**
+
+Aqui você pode utilizar o Postman para realizar as requisições apresentadas nesta documentação, sendo assim a collection que será disponibilizada irá apresentar todos os endpoints e desta forma você pode utilizar a mesma de maneira fácil e ágil.
+
+## Configurando o Postman para importar os certificados
+
+- No Postman, acesse as configurações, selecione a aba de certificados e clique em "Add certificate...";
+  ![](/images/certificate_step1.png)
+
+- Insira a URL do ambiente de teste e, em seguida:
+
+  - Na seção "CRT file" e "KEY file", clique em "Select file" e escolha os arquivos ".crt" e ".key" que foram extraídos para o diretório do certificado.
+    ![](/images/certificate_step2.png)
+
+  **Ou**
+
+  - Na seção “Arquivo PFX”, clique em “Select file” e selecione o arquivo “.pfx” que foi extraído para o diretório do certificado. No campo “Passphrase”, insira a senha do certificado fornecida no e-mail.
+    ![](/images/certificate_step3.png)
+
+### Como gerar minhas credenciais?
+
+- Acesse o portal Finance.
+- Acesse "Configurações" no menu lateral.
+- API QRCodes ou API Contas para gerenciar as suas credenciais
+
+## O Webhook da API de QRCodes não possui status?
+
+- A API de QRCodes possui um funcionamento diferente da API de Contas no que se refere aos webhooks. Enquanto a API de Contas utiliza status para acompanhar os eventos, a de QRCodes não trabalha dessa forma. Nesse caso, o webhook retorna apenas um payload com alguns dados do pagador e informações relevantes sobre a cobrança. Assim, o disparo do webhook ocorre somente quando a cobrança é efetivamente paga.
+- Entretanto, é possível contornar cadastrando o webhook de Recebimento da API de Contas. Nesse caso, é importante observar que todos os recebimentos serão notificados via webhook. Para identificar se a notificação corresponde a uma cobrança ou a um recebimento tradicional, basta verificar o parâmetro [txid]: se estiver preenchido com o [txid] da cobrança, significa que o webhook recebido é referente a uma cobrança; se vier como “Null”, trata-se de um recebimento tradicional.

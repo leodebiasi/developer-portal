@@ -1,0 +1,612 @@
+---
+title: "Onboarding Journey"
+description: "Este guia apresenta o fluxo completo para realizar o onboarding (cadastro) de novos clientes através da API, desde a criação até a aprovação e abertura de conta."
+---
+Este guia apresenta o fluxo completo para realizar o onboarding (cadastro) de novos clientes através da API, desde a criação até a aprovação e abertura de conta.
+
+## 📋 Visão Geral
+
+Nesta jornada, você aprenderá a:
+
+1. ✅ Criar um novo onboarding (cadastro de cliente)
+2. ✅ Consultar o status do onboarding
+3. ✅ Atualizar informações do cadastro
+4. ✅ Aprovar ou rejeitar um onboarding
+5. ✅ Gerenciar documentos e imagens
+
+## 🎯 Cenário de Uso
+
+Imagine que você precisa:
+
+- Cadastrar um novo cliente (pessoa física ou jurídica)
+- Coletar documentos e informações pessoais
+- Validar e aprovar o cadastro
+- Criar uma conta bancária para o cliente aprovado
+
+## 🔄 Fluxo Completo
+
+```
+┌─────────────────────┐
+│ 1. Criar Onboarding │
+│    POST /onboardings│
+└──────────┬──────────┘
+           │
+           │ Status: PENDING
+           │
+           ▼
+┌─────────────────────┐
+│ 2. Upload Docs      │
+│    POST /images     │
+└──────────┬──────────┘
+           │
+           │ Status: WAITING_APPROVAL
+           │
+           ▼
+┌─────────────────────┐
+│ 3. Aprovar/Rejeitar │
+│    POST /approve    │
+│    POST /reject     │
+└──────────┬──────────┘
+           │
+           │ Status: APPROVED ou REJECTED
+           │
+           ▼
+┌─────────────────────┐
+│ 4. Conta Criada     │
+│    (se aprovado)    │
+└─────────────────────┘
+```
+
+## 📝 Passo 1: Criar Onboarding
+
+### Pessoa Física
+
+```bash
+curl -X POST "https://secureapi.onz.finance/onboardings" \
+  -H "Authorization: Bearer SEU_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "accountType": "NATURAL_PERSON",
+    "personName": "João da Silva Santos",
+    "personDocument": "12345678901",
+    "personEmail": "joao.silva@email.com",
+    "personPhone": "11987654321",
+    "addrZipCode": "01310100",
+    "addrAddress": "Avenida Paulista",
+    "addrNumber": "1578",
+    "addrComplement": "Apto 101",
+    "addrDistrict": "Bela Vista",
+    "accountPassword": "SenhaForte123!",
+    "accountMasterPassword": "MasterSenha456!",
+    "isPep": false
+  }'
+```
+
+### Pessoa Jurídica
+
+```bash
+curl -X POST "https://secureapi.onz.finance/onboardings" \
+  -H "Authorization: Bearer SEU_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "accountType": "LEGAL_PERSON",
+    "companyName": "Tech Solutions LTDA",
+    "companyTradeName": "TechSol",
+    "companyDocument": "12345678000190",
+    "companyEmail": "contato@techsol.com.br",
+    "companyPhone": "1133334444",
+    "personName": "Maria Oliveira Costa",
+    "personDocument": "98765432100",
+    "personEmail": "maria.oliveira@techsol.com.br",
+    "personPhone": "11999887766",
+    "addrZipCode": "04543011",
+    "addrAddress": "Avenida Brigadeiro Faria Lima",
+    "addrNumber": "3477",
+    "addrDistrict": "Itaim Bibi",
+    "accountPassword": "EmpresaSenha789!",
+    "accountMasterPassword": "MasterEmpresa321!",
+    "isPep": false
+  }'
+```
+
+### Resposta de Sucesso (201)
+
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "accountType": "NATURAL_PERSON",
+  "status": "PENDING",
+  "person": {
+    "name": "João da Silva Santos",
+    "document": "12345678901",
+    "email": "joao.silva@email.com",
+    "phone": "11987654321",
+    "tradeName": null
+  },
+  "address": {
+    "zipCode": "01310100",
+    "address": "Avenida Paulista",
+    "number": "1578",
+    "complement": "Apto 101",
+    "district": "Bela Vista"
+  },
+  "company": null,
+  "isPep": false,
+  "baasId": null,
+  "deviceId": null,
+  "observation": null,
+  "createdAt": "2026-01-30T12:00:00Z",
+  "updatedAt": "2026-01-30T12:00:00Z"
+}
+```
+
+## 📝 Passo 2: Consultar Onboarding
+
+### Buscar por ID
+
+```bash
+curl -X GET "https://secureapi.onz.finance/onboardings/550e8400-e29b-41d4-a716-446655440000" \
+  -H "Authorization: Bearer SEU_TOKEN"
+```
+
+### Listar Todos
+
+```bash
+curl -X GET "https://secureapi.onz.finance/onboardings?page=1&perPage=20" \
+  -H "Authorization: Bearer SEU_TOKEN"
+```
+
+### Resposta
+
+```json
+{
+  "meta": {
+    "total": 150,
+    "perPage": 20,
+    "currentPage": 1,
+    "firstPage": 1,
+    "lastPage": 8,
+    "nextPage": 2,
+    "prevPage": null
+  },
+  "data": [
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440000",
+      "accountType": "NATURAL_PERSON",
+      "status": "PENDING",
+      "person": {
+        "name": "João da Silva Santos",
+        "document": "12345678901",
+        "email": "joao.silva@email.com",
+        "phone": "11987654321",
+        "tradeName": null
+      },
+      "address": {
+        "zipCode": "01310100",
+        "address": "Avenida Paulista",
+        "number": "1578",
+        "complement": "Apto 101",
+        "district": "Bela Vista"
+      },
+      "company": null,
+      "isPep": false,
+      "createdAt": "2026-01-30T12:00:00Z",
+      "updatedAt": "2026-01-30T12:00:00Z"
+    }
+  ]
+}
+```
+
+## 📝 Passo 3: Atualizar Informações
+
+Você pode atualizar qualquer informação do onboarding antes da aprovação.
+
+### Atualizar Email e Telefone
+
+```bash
+curl -X PUT "https://secureapi.onz.finance/onboardings/550e8400-e29b-41d4-a716-446655440000" \
+  -H "Authorization: Bearer SEU_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "personEmail": "novo.email@email.com",
+    "personPhone": "11988776655"
+  }'
+```
+
+### Atualizar Endereço
+
+```bash
+curl -X PUT "https://secureapi.onz.finance/onboardings/550e8400-e29b-41d4-a716-446655440000" \
+  -H "Authorization: Bearer SEU_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "addrZipCode": "05402000",
+    "addrAddress": "Rua Harmonia",
+    "addrNumber": "123",
+    "addrComplement": "Casa",
+    "addrDistrict": "Vila Madalena"
+  }'
+```
+
+### Resposta (200)
+
+Retorna o onboarding completo com as informações atualizadas.
+
+## 📝 Passo 4: Upload de Documentos
+
+### Consultar Imagens
+
+```bash
+curl -X GET "https://secureapi.onz.finance/onboardings/550e8400-e29b-41d4-a716-446655440000/images" \
+  -H "Authorization: Bearer SEU_TOKEN"
+```
+
+### Resposta
+
+```json
+[
+  {
+    "type": "FRONT",
+    "key": "onboarding_banking/550e8400.../front.jpg",
+    "url": "https://s3.amazonaws.com/bucket/onboarding_banking/550e8400.../front.jpg?signature=..."
+  },
+  {
+    "type": "BACK",
+    "key": "onboarding_banking/550e8400.../back.jpg",
+    "url": "https://s3.amazonaws.com/bucket/onboarding_banking/550e8400.../back.jpg?signature=..."
+  },
+  {
+    "type": "SELFIE",
+    "key": "onboarding_banking/550e8400.../selfie.jpg",
+    "url": "https://s3.amazonaws.com/bucket/onboarding_banking/550e8400.../selfie.jpg?signature=..."
+  }
+]
+```
+
+> **Nota**: As URLs são assinadas e expiram após 1 hora.
+
+## 📝 Passo 5: Aprovar Onboarding
+
+### Aprovar e Criar Conta
+
+```bash
+curl -X POST "https://secureapi.onz.finance/onboardings/550e8400-e29b-41d4-a716-446655440000/approve" \
+  -H "Authorization: Bearer SEU_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "createAccount": true,
+    "planId": 1,
+    "observation": "Documentação aprovada. Cliente verificado."
+  }'
+```
+
+### Aprovar Sem Criar Conta
+
+```bash
+curl -X POST "https://secureapi.onz.finance/onboardings/550e8400-e29b-41d4-a716-446655440000/approve" \
+  -H "Authorization: Bearer SEU_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "createAccount": false,
+    "observation": "Cadastro aprovado para análise posterior."
+  }'
+```
+
+### Resposta de Sucesso (200)
+
+```json
+{
+  "personId": 123,
+  "accountId": 456
+}
+```
+
+> **Nota**: `accountId` só é retornado se `createAccount: true`.
+
+## 📝 Passo 6: Rejeitar Onboarding
+
+```bash
+curl -X POST "https://secureapi.onz.finance/onboardings/550e8400-e29b-41d4-a716-446655440000/reject" \
+  -H "Authorization: Bearer SEU_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "observation": "Documentos ilegíveis. Solicitar reenvio de fotos mais nítidas."
+  }'
+```
+
+### Resposta (200)
+
+Retorna o onboarding com status `REJECTED`.
+
+## 📊 Status do Onboarding
+
+| Status                   | Descrição                                      |
+| ------------------------ | ---------------------------------------------- |
+| `PENDING`                | Cadastro criado, aguardando documentos         |
+| `WAITING_APPROVAL`       | Documentos enviados, aguardando análise        |
+| `APPROVED`               | Cadastro aprovado                              |
+| `REJECTED`               | Cadastro rejeitado                             |
+| `WAITING_REVIEW_APPROVAL`| Aguardando revisão adicional                   |
+| `REMOVED`                | Cadastro removido                              |
+
+## 📊 Tipos de Conta
+
+| Tipo              | Descrição                    |
+| ----------------- | ---------------------------- |
+| `NATURAL_PERSON`  | Pessoa Física (CPF)          |
+| `LEGAL_PERSON`    | Pessoa Jurídica (CNPJ)       |
+| `SALARY_ACCOUNT`  | Conta Salário                |
+
+## 📊 Tipos de Documento
+
+| Tipo     | Descrição                    |
+| -------- | ---------------------------- |
+| `FRONT`  | Frente do documento          |
+| `BACK`   | Verso do documento           |
+| `SELFIE` | Selfie com documento         |
+
+## 💻 Exemplo Completo em Node.js
+
+```typescript
+import axios from 'axios';
+
+const API_BASE_URL = 'https://secureapi.onz.finance';
+
+class OnboardingService {
+  constructor(
+    private token: string,
+  ) {}
+
+  // 1. Criar onboarding
+  async createOnboarding(data: CreateOnboardingRequest) {
+    const response = await axios.post(
+      `${API_BASE_URL}/onboardings`,
+      data,
+      {
+        headers: { Authorization: `Bearer ${this.token}` },
+      },
+    );
+    return response.data;
+  }
+
+  // 2. Consultar onboarding
+  async getOnboarding(id: string) {
+    const response = await axios.get(
+      `${API_BASE_URL}/onboardings/${id}`,
+      {
+        headers: { Authorization: `Bearer ${this.token}` },
+      },
+    );
+    return response.data;
+  }
+
+  // 3. Atualizar onboarding
+  async updateOnboarding(id: string, data: Partial<CreateOnboardingRequest>) {
+    const response = await axios.put(
+      `${API_BASE_URL}/onboardings/${id}`,
+      data,
+      {
+        headers: { Authorization: `Bearer ${this.token}` },
+      },
+    );
+    return response.data;
+  }
+
+  // 4. Aprovar onboarding
+  async approveOnboarding(
+    id: string,
+    options: {
+      createAccount: boolean;
+      planId?: number;
+      observation?: string;
+      forceAccept?: boolean;
+    },
+  ) {
+    const response = await axios.post(
+      `${API_BASE_URL}/onboardings/${id}/approve`,
+      options,
+      {
+        headers: { Authorization: `Bearer ${this.token}` },
+      },
+    );
+    return response.data;
+  }
+
+  // 5. Rejeitar onboarding
+  async rejectOnboarding(id: string, observation: string) {
+    const response = await axios.post(
+      `${API_BASE_URL}/onboardings/${id}/reject`,
+      { observation },
+      {
+        headers: { Authorization: `Bearer ${this.token}` },
+      },
+    );
+    return response.data;
+  }
+
+  // 6. Consultar imagens
+  async getImages(id: string) {
+    const response = await axios.get(
+      `${API_BASE_URL}/onboardings/${id}/images`,
+      {
+        headers: { Authorization: `Bearer ${this.token}` },
+      },
+    );
+    return response.data;
+  }
+}
+
+interface CreateOnboardingRequest {
+  accountType: 'NATURAL_PERSON' | 'LEGAL_PERSON' | 'SALARY_ACCOUNT';
+  personName: string;
+  personDocument: string;
+  personEmail: string;
+  personPhone: string;
+  addrZipCode: string;
+  addrAddress: string;
+  addrNumber: string;
+  addrDistrict: string;
+  addrComplement?: string;
+  accountPassword: string;
+  accountMasterPassword: string;
+  isPep?: boolean;
+  companyName?: string;
+  companyDocument?: string;
+  companyEmail?: string;
+  companyPhone?: string;
+}
+
+// Uso
+(async () => {
+  const service = new OnboardingService('SEU_TOKEN');
+
+  // 1. Criar onboarding
+  const onboarding = await service.createOnboarding({
+    accountType: 'NATURAL_PERSON',
+    personName: 'João da Silva',
+    personDocument: '12345678901',
+    personEmail: 'joao@email.com',
+    personPhone: '11987654321',
+    addrZipCode: '01310100',
+    addrAddress: 'Av Paulista',
+    addrNumber: '1578',
+    addrDistrict: 'Bela Vista',
+    accountPassword: 'Senha123!',
+    accountMasterPassword: 'Master456!',
+    isPep: false,
+  });
+
+  console.log('Onboarding criado:', onboarding.id);
+
+  // 2. Consultar status
+  const status = await service.getOnboarding(onboarding.id);
+  console.log('Status:', status.status);
+
+  // 3. Aprovar
+  const result = await service.approveOnboarding(onboarding.id, {
+    createAccount: true,
+    planId: 1,
+    observation: 'Aprovado',
+    // Opcional: força aprovação mesmo fora do status esperado (ver seção de erros 422)
+    forceAccept: false,
+  });
+
+  console.log('Conta criada:', result.accountId);
+})();
+```
+
+## ⚠️ Tratamento de Erros
+
+### Onboarding Não Encontrado (404)
+
+```json
+{
+  "type": "about:blank",
+  "title": "Not Found",
+  "status": 404,
+  "detail": "Onboarding não encontrado",
+  "instance": "/onboardings/550e8400...",
+  "requestId": "abc123..."
+}
+```
+
+### Status Inválido para Aprovação (422)
+
+```json
+{
+  "type": "about:blank",
+  "title": "Unprocessable Entity",
+  "status": 422,
+  "detail": "Onboarding não está aguardando aprovação",
+  "instance": "/onboardings/550e8400.../approve",
+  "requestId": "abc123..."
+}
+```
+
+**Solução**: Use `forceAccept: true` para forçar a aprovação quando o onboarding
+não estiver no status esperado (o backend ignora a validação de status e tenta
+aprovar mesmo assim):
+
+```json
+{
+  "createAccount": true,
+  "planId": 1,
+  "forceAccept": true
+}
+```
+
+### Dados Inválidos (400)
+
+```json
+{
+  "type": "about:blank",
+  "title": "Bad Request",
+  "status": 400,
+  "detail": "personEmail: Invalid email format",
+  "instance": "/onboardings",
+  "requestId": "abc123..."
+}
+```
+
+## ✅ Checklist de Implementação
+
+- [ ] Implementar criação de onboarding
+- [ ] Implementar consulta de status
+- [ ] Implementar atualização de dados
+- [ ] Implementar aprovação/rejeição
+- [ ] Implementar consulta de imagens
+- [ ] Adicionar validação de dados
+- [ ] Implementar tratamento de erros
+- [ ] Adicionar logs com requestId
+- [ ] Implementar retry logic
+- [ ] Adicionar testes automatizados
+
+## 🔐 Segurança
+
+### Senhas
+
+- As senhas são **hasheadas automaticamente** no servidor
+- Use senhas fortes (mínimo 8 caracteres, letras, números e símbolos)
+- Nunca armazene senhas em texto plano
+
+### Dados Sensíveis
+
+- Todos os dados são transmitidos via HTTPS
+- Use mTLS para maior segurança
+- Implemente rate limiting no seu lado
+
+### PEP (Pessoa Politicamente Exposta)
+
+- Marque `isPep: true` se o cliente for PEP
+- Isso pode exigir validações adicionais
+
+## 🔄 Próximos Passos
+
+Agora que você sabe fazer onboarding, explore:
+
+1. **[Account Management](/banking/account-management)** - Gerenciar contas criadas
+2. **[People Management](/banking/people-management)** - Gerenciar cadastro de pessoas
+3. **[Errors & Retries](/banking/errors-and-retries)** - Tratamento de erros e boas práticas
+
+## 💡 Dicas Importantes
+
+### Fluxo Recomendado
+
+1. Crie o onboarding com dados básicos
+2. Valide os dados no seu sistema
+3. Colete documentos (se necessário)
+4. Aprove ou rejeite baseado na sua análise
+5. Crie a conta bancária na aprovação
+
+### Validações
+
+- CPF/CNPJ devem ser válidos
+- Email deve ter formato válido
+- CEP deve existir
+- Telefone deve ter mínimo 8 dígitos
+
+### Desempenho
+
+- Use paginação ao listar onboardings
+- Implemente cache de consultas frequentes
+- Use filtros para reduzir volume de dados

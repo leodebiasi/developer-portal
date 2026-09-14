@@ -1,0 +1,61 @@
+---
+title: "Pagadores"
+description: "O customerId da cobrança aponta para este cadastro, isolado por conta. Não use o id de cliente do Finance."
+---
+O `customerId` da cobrança aponta para este cadastro, isolado por conta. Não use o id de cliente do Finance.
+
+**Scope:** `invoices.read` para consulta, `invoices.write` para criar/alterar/excluir.
+
+## Criar pagador
+
+**Endpoint:** `POST /customers`
+
+`name` precisa ter nome e sobrenome (pelo menos duas palavras). `document` tem de 11 a 20 caracteres. `address` é obrigatório.
+
+```bash
+curl --location 'https://secureapi.onz.finance/api/v2/customers' \
+  --header 'Authorization: Bearer <access_token>' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "name": "Maria Silva",
+    "document": "12345678901",
+    "email": "maria@exemplo.com",
+    "phone": "11999999999",
+    "address": {
+      "address": "Rua das Flores",
+      "number": "100",
+      "complement": "Apto 12",
+      "district": "Centro",
+      "city": "São Paulo",
+      "zipCode": "01310100",
+      "uf": "SP"
+    }
+  }'
+```
+
+| Campo | Obrigatório | Descrição |
+| --- | --- | --- |
+| `name` | Sim | Nome completo (mínimo duas palavras, 3–255) |
+| `document` | Sim | CPF/CNPJ ou documento, 11–20 caracteres |
+| `email` | Não | E-mail do pagador |
+| `phone` | Não | Telefone, até 20 caracteres |
+| `address.address` | Sim | Logradouro |
+| `address.number` | Não | Número, até 20 caracteres |
+| `address.complement` | Não | Complemento |
+| `address.district` | Sim | Bairro |
+| `address.city` | Sim | Cidade |
+| `address.zipCode` | Sim | CEP, 8–20 caracteres |
+| `address.uf` | Sim | UF com 2 letras |
+
+A resposta `201` devolve o pagador com `id`, dados de contato e o endereço principal.
+
+## Listar, consultar, atualizar e excluir
+
+| Método | Endpoint | Scope |
+| --- | --- | --- |
+| `GET` | `/customers` | `invoices.read` |
+| `GET` | `/customers/{customerId}` | `invoices.read` |
+| `PUT` | `/customers/{customerId}` | `invoices.write` |
+| `DELETE` | `/customers/{customerId}` | `invoices.write` |
+
+Listagem aceita `page` (padrão 1), `perPage` (padrão 20, máximo 100) e `filter` (nome). `PUT` substitui nome, documento, contato e endereço. `DELETE` responde `{ "success": true }`.

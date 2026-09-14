@@ -1,0 +1,23 @@
+---
+title: "Configurando Webhook"
+description: "Cada chave Pix receptora pode ter um webhook associado. A configuração da URL de callback utilizada pelo webhook é feita da seguinte forma"
+---
+Cada chave Pix receptora pode ter um webhook associado.  
+A configuração da URL de callback utilizada pelo webhook é feita da seguinte forma:
+
+```ts
+curl --location --request POST 'https://secureapi.onz.finance/api/v2/webhooks/{webhook_type}' \
+    --header 'Content-Type: application/json' \
+    --header 'Authorization: Bearer eyJhbGc...' \
+    --data {
+        "uri": "{partner_callback_url}",
+        "enabled": true,
+    }
+```
+
+Onde:
+
+- webhook_type: Webhook que deseja configurar (`transfer`, `receive`, `refund`, `cashout`, `infraction` ou `invoice`)
+- partner_callback_url: URL de callback fornecida pelo parceiro para receber a solicitação POST com os dados respectivos a cada webhook.
+
+Para eventos de cobrança Pix/boleto (`invoice.registered`, `invoice.paid`, `invoice.settled`, `invoice.cancelled`, `invoice.overdue`), veja [Webhook de cobrança](/contas/invoices/webhook).

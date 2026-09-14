@@ -1,0 +1,106 @@
+---
+title: "Emitir cobrança"
+description: "Scope: invoices.write para criar, emitir e cancelar; invoices.read para listar e detalhar."
+---
+**Scope:** `invoices.write` para criar, emitir e cancelar; `invoices.read` para listar e detalhar.
+
+## Criar
+
+**Endpoint:** `POST /invoices`
+
+O header `x-idempotency-key` é obrigatório (1–50 caracteres). A mesma chave com o mesmo payload devolve a cobrança original. Payload diferente com a mesma chave responde `409`.
+
+```bash
+curl --location 'https://secureapi.onz.finance/api/v2/invoices' \
+  --header 'Authorization: Bearer <access_token>' \
+  --header 'Content-Type: application/json' \
+  --header 'x-idempotency-key: invoice-2026-0001' \
+  --data '{
+    "customerId": 42,
+    "paymentMethod": "PIX_BOLETO",
+    "pixKey": "12345678901",
+    "dueDate": "2026-08-20",
+    "daysToPay": 5,
+    "amount": 150.9,
+    "type": "SCHEDULED",
+    "description": "Mensalidade agosto",
+    "interest": { "type": 3, "amount": 1 },
+    "lateFee": { "type": 2, "amount": 2 },
+    "discount": {
+      "type": 2,
+      "value": 10,
+      "deadline": "2026-08-15"
+    }
+  }'
+```
+
+| Campo | Obrigatório | Descrição |
+| --- | --- | --- |
+| `customerId` | Sim | Id retornado em `POST /customers` |
+| `paymentMethod` | Não | `PIX` (padrão), `BOLETO` ou `PIX_BOLETO` |
+| `pixKey` | Se o método inclui Pix | Chave Pix da conta recebedora |
+| `dueDate` | Sim | Vencimento `YYYY-MM-DD` (America/Sao_Paulo) |
+| `daysToPay` | Não | Validade após o vencimento. Padrão `0`. Zerado em `IMMEDIATE`. |
+| `amount` | Sim | Valor positivo em reais |
+| `type` | Sim | `IMMEDIATE` ou `SCHEDULED` |
+| `description` | Não | Até 255 caracteres |
+| `emailTo` | Não | Destinatário do e-mail da cobrança |
+| `sendEmail` | Não | Enviar e-mail ao criar/emitir. Padrão `false`. |
+| `interest` | Não | Juros. Ignorado em `IMMEDIATE`. |
+| `lateFee` | Não | Multa. Ignorada em `IMMEDIATE`. |
+| `discount` | Não | Desconto |
+
+### Juros (`interest.type`)
+
+| Valor | Cálculo |
+| --- | --- |
+| `1` | Valor fixo, dias corridos |
+| `2` | Percentual ao dia, dias corridos |
+| `3` | Percentual ao mês, dias corridos |
+| `4` | Percentual ao ano, dias corridos |
+| `5`–`8` | Equivalentes em dias úteis. **Não suportados em boleto** (`422`). |
+
+`amount` em juros e multa é o valor ou percentual, conforme o tipo.
+
+### Multa (`lateFee.type`)
+
+| Valor | Cálculo |
+| --- | --- |
+| `1` | Valor fixo |
+| `2` | Percentual |
+
+### Desconto (`discount.type`)
+
+| Valor | Cálculo |
+| --- | --- |
+| `1` | Valor fixo até a data |
+| `2` | Percentual até a data |
+| `3` | Valor fixo por dia de antecipação |
+| `4` | Percentual por dia de antecipação |
+| `5` | Valor fixo até o vencimento |
+| `6` | Percentual até o vencimento |
+
+`deadline` é obrigatório nos tipos 1 e 2.
+
+A resposta `201` inclui `id`, `status`, `txId`, `brCode` (Pix) e, após o registro do boleto, `boletoBarcode` / `boletoDigitableLine`.
+
+## Emitir rascunho
+
+**Endpoint:** `POST /invoices/{invoiceId}/emit`
+
+Só faturas `SCHEDULED` em `DRAFT`. Responde a cobrança já registrada (`PENDING` ou `REGISTERING`).
+
+## Listar e detalhar
+
+| Método | Endpoint | Query |
+| --- | --- | --- |
+| `GET` | `/invoices` | `page`, `perPage` (máx. 100), `filter` (descrição ou nome do pagador) |
+| `GET` | `/invoices/{invoiceId}` | — |
+
+A listagem devolve `{ meta, data }`. `meta` tem `total`, `perPage`, `currentPage`, `firstPage`, `lastPage`, `nextPage` e `prevPage`.
+
+## Cancelar
+
+**Endpoint:** `DELETE /invoices/{invoiceId}`
+
+Cancela a cobrança e o Pix/boleto remanescente. Responde `{ "success": true }`.

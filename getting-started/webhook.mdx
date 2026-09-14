@@ -1,0 +1,23 @@
+---
+title: "Gerenciamento de Notificações (Webhooks)"
+description: "Webhooks são uma poderosa ferramenta para receber informações sobre eventos de API à medida que eles acontecem. Um evento, como uma cobrança paga ou o recebimento de um Pix, é uma…"
+---
+Webhooks são uma poderosa ferramenta para receber informações sobre eventos de API à medida que eles acontecem. Um evento, como uma cobrança paga ou o recebimento de um Pix, é uma atividade que ocorre fora do seu sistema. Com webhooks, é possível criar ou configurar integrações que permitem que notificações sejam enviadas automaticamente para um endpoint específico sempre que um evento ocorrer.
+
+## Por que usar Webhooks?
+
+### Economia de Recursos
+
+Em vez de sua aplicação precisar realizar requisições constantes para verificar atualizações (polling), os webhooks enviam notificações somente quando um evento específico ocorre. Isso reduz o uso de banda e processamento, economizando recursos e melhorando a performance geral da aplicação. A economia de recursos também pode levar a uma redução nos custos operacionais e maior eficiência no gerenciamento de infraestrutura.
+
+### Confiabilidade
+
+Webhooks oferecem uma maneira confiável de garantir que eventos importantes sejam notificados imediatamente. Nosso sistema de webhooks implementa mecanismos de retry, o que aumenta a confiabilidade da comunicação. Isso assegura que, mesmo em casos de falhas temporárias ou interrupções, as notificações serão reencaminhadas até que sejam recebidas corretamente pelo sistema.
+
+### Redução de Latência
+
+Ao receber notificações em tempo real, o sistema pode responder rapidamente a eventos, o que reduz a latência em comparação com abordagens baseadas em polling. Isso é particularmente importante para aplicações que exigem respostas rápidas.
+
+### Melhor Escalabilidade
+
+Webhooks permitem que seu sistema reaja a eventos sem necessidade de sobrecarregar a API com requisições de polling. Isso pode melhorar a escalabilidade, pois evita que a aplicação precise lidar com um grande número de requisições simultâneas para verificar atualizações, permitindo que o sistema se concentre em processar eventos reais à medida que eles ocorrem.

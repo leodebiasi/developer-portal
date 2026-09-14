@@ -1,0 +1,17 @@
+---
+title: "Autenticação"
+description: "A implementação de cache para tokens JWT pode ser uma estratégia valiosa para melhorar o desempenho e reduzir o tráfego de rede em sistemas que dependem de autenticação baseada em…"
+---
+### Boas práticas
+
+A implementação de cache para tokens JWT pode ser uma estratégia valiosa para melhorar o desempenho e reduzir o tráfego de rede em sistemas que dependem de autenticação baseada em token. Ao armazenar temporariamente tokens de acesso em cache, os clientes podem evitar a necessidade de solicitar novos tokens para cada solicitação de API, desde que os tokens permaneçam dentro do seu período de validade.
+
+Para garantir a segurança dos tokens armazenados em cache, é fundamental seguir algumas práticas recomendadas. Primeiro, os tokens JWT devem ser armazenados de forma segura no lado do parceiro, evitando o acesso não autorizado aos recursos. Além disso, as credenciais e certificados utilizados para obter os tokens devem ser devidamente protegidos.
+
+Quanto à escolha entre cache local e compartilhado, é importante considerar os requisitos específicos do sistema, incluindo segurança, escalabilidade e consistência. Embora o cache local ofereça acesso rápido, ele é volátil e pode ser perdido em caso de reinicialização do sistema. Por outro lado, o cache distribuído é adequado para ambientes distribuídos, garantindo consistência e disponibilidade de tokens em todo o ambiente.
+
+Ao configurar um sistema de cache distribuído, é crucial garantir medidas de segurança adequadas para proteger os tokens de autorização armazenados. Isso inclui a criptografia de dados em repouso e em trânsito, bem como o monitoramento de atividades suspeitas.
+
+Além disso, é essencial implementar um mecanismo automático de renovação de tokens para garantir que os tokens sejam atualizados antes de expirarem. Isto pode ser conseguido através da reautenticação automática quando um token está prestes a expirar.
+
+Para resolver problemas de simultaneidade ao acessar e atualizar tokens de autorização no cache distribuído, é aconselhável implementar mecanismos de controle de simultaneidade, como bloqueio, mutexes, transações atômicas e controle de versão. Esses mecanismos garantem a consistência dos dados no cache e evitam problemas como condições de corrida e inconsistências de dados.

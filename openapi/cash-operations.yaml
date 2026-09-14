@@ -1,0 +1,642 @@
+openapi: '3.1.0'
+info:
+  title: Cash Operations API (Internal)
+  version: '1.0.0'
+  description: |
+    # Operações de Caixa (Cash) - API Interna
+
+    ## Visão Geral
+
+    As operações de caixa permitem realizar entradas e saídas de valores, além de lançamentos manuais no sistema. 
+    Todas as rotas estão sob o prefixo `/internal` e requerem autenticação interna.
+
+    ## Requisitos
+    - Todas as operações requerem autenticação via header Authorization com token interno
+
+    ## Diferenças entre Operações
+
+    ### Cash-In (Entrada)
+    - **Processamento:** Assíncrono via fila de processamento
+    - **Response:** 202 Accepted (apenas confirma envio para fila de processamento)
+    - **Uso:** Para entradas de valores que serão processadas posteriormente
+    - **Idempotência:** Usa `e2eId` para evitar duplicação
+
+    ### Cash-Out (Saída)
+    - **Processamento:** Síncrono e imediato
+    - **Response:** 201 Created com dados da transação
+    - **Uso:** Para saídas de valores com processamento imediato
+    - **Idempotência:** Retorna 208 se transação já existe
+
+    ### Manual Entry (Lançamento Manual)
+    - **Processamento:** Síncrono e imediato
+    - **Response:** 200 OK com dados da transação
+    - **Uso:** Para ajustes manuais de saldo (crédito ou débito)
+    - **Autenticação:** Usa usuário interno (ID 1) automaticamente
+
+servers:
+  - url: https://api.bancodigital.onz.software
+    description: Servidor de Produção
+  - url: https://api.bancodigital.hmg.onz.software
+    description: Servidor de Homologação
+
+tags:
+  - name: Cash Operations
+    description: |
+      Operações de entrada e saída de valores no caixa.
+
+  - name: Manual Entries
+    description: |
+      Lançamentos manuais de crédito e débito em contas.
+
+security:
+  - InternalAuth: []
+
+paths:
+  /internal/cash-in:
+    post:
+      tags:
+        - Cash Operations
+      summary: Entrada de valores (Cash-In)
+      description: |
+        Realiza uma entrada de valores no caixa. Esta operação é **assíncrona** e envia a requisição 
+        para uma fila de processamento.
+
+        **Importante:**
+        - O valor deve ser informado como string (ex: "1000.00")
+        - Use `e2eId` para garantir idempotência
+        - A resposta apenas confirma o envio para a fila, não o processamento
+      operationId: cashIn
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CashInRequest'
+            examples:
+              pix:
+                summary: Entrada via PIX
+                value:
+                  accountId: 123
+                  type: PIX
+                  amount: '1000.00'
+                  e2eId: 'E2E123456789'
+                  description: 'Recebimento PIX'
+                  pix:
+                    txId: 'TXN123456'
+                    initMethod: 'DICT'
+                  transaction:
+                    document: '12345678900'
+                    ispb: '12345678'
+                    name: 'João Silva'
+                    branch: '0001'
+                    account: '12345-6'
+              ted:
+                summary: Entrada via TED
+                value:
+                  account: '98765-4'
+                  type: TED
+                  amount: '5000.00'
+                  msgId: 'MSG987654'
+                  description: 'Recebimento TED'
+                  transaction:
+                    document: '98765432100'
+                    ispb: '87654321'
+                    name: 'Maria Santos'
+      responses:
+        '202':
+          description: Aceito - requisição enviada para processamento
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+        '400':
+          description: Requisição inválida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Não autorizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Erro de validação
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        '500':
+          description: Erro interno do servidor
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+
+  /internal/cash-out:
+    post:
+      tags:
+        - Cash Operations
+      summary: Saída de valores (Cash-Out)
+      description: |
+        Realiza uma saída de valores do caixa. Esta operação é **síncrona** e processa imediatamente.
+
+        **Importante:**
+        - O valor deve ser informado como string (ex: "500.00")
+        - Retorna 208 se a transação já existe (idempotência)
+        - A resposta inclui os dados completos da transação criada
+      operationId: cashOut
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CashOutRequest'
+            examples:
+              basic:
+                summary: Saída básica
+                value:
+                  accountId: 123
+                  amount: '500.00'
+                  e2eId: 'E2E987654321'
+                  description: 'Pagamento fornecedor'
+                  transaction:
+                    document: '98765432100'
+                    ispb: '87654321'
+                    name: 'Fornecedor XYZ'
+                    branch: '0001'
+                    account: '98765-4'
+      responses:
+        '201':
+          description: Criado - transação processada com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CashOutResponse'
+        '208':
+          description: Já reportado - transação já existe
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                        example: 12345
+                      existing:
+                        type: boolean
+                        example: true
+        '400':
+          description: Requisição inválida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Não autorizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Erro de validação
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        '500':
+          description: Erro interno do servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /internal/manual-entry:
+    post:
+      tags:
+        - Manual Entries
+      summary: Lançamento manual
+      description: |
+        Realiza um lançamento manual no sistema (crédito ou débito). Esta operação é **síncrona** e processa imediatamente.
+
+        **Importante:**
+        - O valor deve ser informado como número (ex: 250.00)
+        - Tipo pode ser `CREDIT` ou `DEBIT`
+        - Usa automaticamente o usuário interno (ID 1)
+        - Requer `reference` e `reason` para auditoria
+      operationId: manualEntry
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ManualEntryRequest'
+            examples:
+              credit:
+                summary: Lançamento de crédito
+                value:
+                  accountId: 123
+                  amount: 250.00
+                  reference: 'REF123456'
+                  reason: 'Ajuste de saldo - crédito promocional'
+                  type: 'CREDIT'
+                  historicId: '550e8400-e29b-41d4-a716-446655440000'
+                  accountingEventId: 456
+              debit:
+                summary: Lançamento de débito
+                value:
+                  accountId: 123
+                  amount: 100.00
+                  reference: 'REF789012'
+                  reason: 'Correção de lançamento duplicado'
+                  type: 'DEBIT'
+      responses:
+        '200':
+          description: Sucesso - lançamento processado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ManualEntryResponse'
+        '400':
+          description: Requisição inválida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Não autorizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Erro de validação
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        '500':
+          description: Erro interno do servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  securitySchemes:
+    InternalAuth:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: |
+        Token de autenticação interno.
+
+  schemas:
+    CashInRequest:
+      type: object
+      required:
+        - amount
+      properties:
+        account:
+          type: string
+          description: Número da conta (obrigatório se accountId não for informado)
+          example: '12345-6'
+        accountId:
+          type: integer
+          description: ID da conta (obrigatório se account não for informado)
+          example: 123
+        type:
+          type: string
+          enum: [PIX, TED, DOC, BILLET]
+          description: Tipo da transação
+          default: PIX
+        amount:
+          type: string
+          description: Valor da entrada (string)
+          example: '1000.00'
+          pattern: '^\d+\.\d{2}$'
+        msgId:
+          type: string
+          description: ID da mensagem (obrigatório se e2eId não for informado)
+          example: 'MSG123456'
+        e2eId:
+          type: string
+          description: End-to-end ID para idempotência
+          example: 'E2E123456789'
+        description:
+          type: string
+          maxLength: 255
+          description: Descrição da transação
+          example: 'Recebimento PIX'
+        billet:
+          type: object
+          description: Dados do boleto (opcional)
+          properties:
+            digitableLine:
+              type: string
+              description: Linha digitável do boleto
+              example: '34191.79001 01043.510047 91020.150008 1 82880000000100'
+        pix:
+          type: object
+          description: Dados da transação PIX (opcional)
+          properties:
+            txId:
+              type: string
+              description: ID da transação PIX
+              example: 'TXN123456'
+            initMethod:
+              type: string
+              enum: [DICT, MANU, QRDN, QRES]
+              description: Método de iniciação
+              example: 'DICT'
+        transaction:
+          type: object
+          description: Dados da transação (opcional)
+          properties:
+            document:
+              type: string
+              description: Documento do pagador
+              example: '12345678900'
+            ispb:
+              type: string
+              description: ISPB da instituição
+              example: '12345678'
+            name:
+              type: string
+              description: Nome do pagador
+              example: 'João Silva'
+            branch:
+              type: string
+              description: Agência
+              example: '0001'
+            account:
+              type: string
+              description: Conta
+              example: '12345-6'
+            accountingEventId:
+              type: string
+              description: ID do evento contábil
+              example: 'EVENT123'
+
+    CashOutRequest:
+      type: object
+      required:
+        - amount
+      properties:
+        account:
+          type: string
+          description: Número da conta (obrigatório se accountId não for informado)
+          example: '12345-6'
+        accountId:
+          type: integer
+          description: ID da conta (obrigatório se account não for informado)
+          example: 123
+        type:
+          type: string
+          enum: [PIX, TED, DOC, BILLET]
+          description: Tipo da transação
+          default: PIX
+        amount:
+          type: string
+          description: Valor da saída (string)
+          example: '500.00'
+          pattern: '^\d+\.\d{2}$'
+        msgId:
+          type: string
+          description: ID da mensagem (obrigatório se e2eId não for informado)
+          example: 'MSG123456'
+        e2eId:
+          type: string
+          description: End-to-end ID para idempotência
+          example: 'E2E987654321'
+        description:
+          type: string
+          maxLength: 255
+          description: Descrição da transação
+          example: 'Pagamento fornecedor'
+        billet:
+          type: object
+          description: Dados do boleto (opcional)
+          properties:
+            digitableLine:
+              type: string
+              description: Linha digitável do boleto
+        pix:
+          type: object
+          description: Dados da transação PIX (opcional)
+          properties:
+            txId:
+              type: string
+              description: ID da transação PIX
+            initMethod:
+              type: string
+              enum: [DICT, MANU, QRDN, QRES]
+              description: Método de iniciação
+        transaction:
+          type: object
+          description: Dados da transação (opcional)
+          properties:
+            document:
+              type: string
+              description: Documento do beneficiário
+              example: '98765432100'
+            ispb:
+              type: string
+              description: ISPB da instituição
+              example: '87654321'
+            name:
+              type: string
+              description: Nome do beneficiário
+              example: 'Fornecedor XYZ'
+            branch:
+              type: string
+              description: Agência
+              example: '0001'
+            account:
+              type: string
+              description: Conta
+              example: '98765-4'
+            accountingEventId:
+              type: string
+              description: ID do evento contábil
+
+    CashOutResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          properties:
+            id:
+              type: integer
+              description: ID da transação
+              example: 12345
+            amount:
+              type: string
+              description: Valor da transação
+              example: '500.00'
+            type:
+              type: string
+              description: Tipo da transação
+              example: 'PIX'
+            status:
+              type: string
+              description: Status da transação
+              example: 'LIQUIDATED'
+            creditDebitType:
+              type: string
+              enum: [CREDIT, DEBIT]
+              description: Tipo de movimentação
+              example: 'DEBIT'
+            createdAt:
+              type: string
+              format: date-time
+              description: Data de criação
+              example: '2025-11-18T10:00:00.000Z'
+            existing:
+              type: boolean
+              description: Indica se a transação já existia
+              example: false
+
+    ManualEntryRequest:
+      type: object
+      required:
+        - amount
+        - reference
+        - reason
+        - type
+      properties:
+        account:
+          type: string
+          description: Número da conta (obrigatório se accountId não for informado)
+          example: '12345-6'
+        accountId:
+          type: integer
+          minimum: 1
+          description: ID da conta (obrigatório se account não for informado)
+          example: 123
+        amount:
+          type: number
+          minimum: 0.01
+          description: Valor do lançamento (número decimal)
+          example: 250.00
+        reference:
+          type: string
+          description: Referência do lançamento
+          example: 'REF123456'
+        reason:
+          type: string
+          description: Motivo/justificativa do lançamento
+          example: 'Ajuste de saldo - crédito promocional'
+        type:
+          type: string
+          enum: [CREDIT, DEBIT]
+          description: Tipo do lançamento
+          example: 'CREDIT'
+        historicId:
+          type: string
+          format: uuid
+          description: ID do histórico contábil (UUID v4)
+          example: '550e8400-e29b-41d4-a716-446655440000'
+        accountingEventId:
+          type: integer
+          minimum: 1
+          description: ID do evento contábil
+          example: 456
+
+    ManualEntryResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: ID da transação
+          example: 12345
+        amount:
+          type: string
+          description: Valor do lançamento
+          example: '250.00'
+        type:
+          type: string
+          description: Tipo da transação
+          example: 'MANUAL_ENTRY'
+        creditDebitType:
+          type: string
+          enum: [CREDIT, DEBIT]
+          description: Tipo de movimentação
+          example: 'CREDIT'
+        status:
+          type: string
+          description: Status da transação
+          example: 'LIQUIDATED'
+        paymentType:
+          type: string
+          description: Tipo de pagamento
+          example: 'INSTANT'
+        actionTag:
+          type: string
+          description: Tag da ação
+          example: 'PACS008C'
+        relatedAccountId:
+          type: integer
+          description: ID da conta relacionada
+          example: 123
+        createdAt:
+          type: string
+          format: date-time
+          description: Data de criação
+          example: '2025-11-18T10:00:00.000Z'
+        updatedAt:
+          type: string
+          format: date-time
+          description: Data de atualização
+          example: '2025-11-18T10:00:00.000Z'
+
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+          description: Mensagem de erro
+          example: 'Erro ao processar requisição'
+        status:
+          type: integer
+          description: Código HTTP do erro
+          example: 500
+
+    ValidationError:
+      type: object
+      properties:
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+                description: Campo com erro
+                example: 'amount'
+              message:
+                type: string
+                description: Mensagem de erro
+                example: 'O campo amount é obrigatório'
+              rule:
+                type: string
+                description: Regra de validação violada
+                example: 'required'

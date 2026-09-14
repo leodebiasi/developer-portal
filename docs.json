@@ -1,54 +1,46 @@
 {
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
-  "name": "Mintlify Starter Kit",
+  "name": "ONZ Developers",
+  "description": "Documentação das APIs ONZ Finance: Pix, contas, Banking API, SPB e onboarding.",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#319795",
+    "light": "#38B2AC",
+    "dark": "#285E61"
   },
-  "favicon": "/favicon.svg",
-  "navigation": {
-    "pages": [
-      {
-        "group": "Getting Started",
-        "pages": [
-          "index",
-          "quickstart"
-        ]
-      }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
-        }
-      ]
-    }
-  },
+  "favicon": "/favicon.ico",
   "logo": {
     "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
+    "dark": "/logo/dark.svg",
+    "href": "/"
+  },
+  "appearance": {
+    "default": "system"
+  },
+  "search": {
+    "prompt": "Buscar APIs, jornadas, autenticação…"
   },
   "navbar": {
     "links": [
       {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
+        "label": "Portal atual",
+        "href": "https://developers.onz.software"
       }
     ],
     "primary": {
-      "type": "button",
-      "label": "Dashboard",
-      "href": "https://app.mintlify.com"
+      "type": "github",
+      "href": "https://github.com/ONZ-Software/developer-portal"
     }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/ONZ-Software/developer-portal",
+      "website": "https://onz.software"
+    }
+  },
+  "banner": {
+    "content": "POC Mintlify. A documentação de produção continua em [developers.onz.software](https://developers.onz.software).",
+    "dismissible": true
   },
   "contextual": {
     "options": [
@@ -56,17 +48,372 @@
       "view",
       "chatgpt",
       "claude",
-      "perplexity",
       "mcp",
       "cursor",
-      "vscode"
+      "vscode",
+      "download-spec"
     ]
   },
-  "footer": {
-    "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
+  "api": {
+    "playground": {
+      "display": "simple"
+    },
+    "params": {
+      "expanded": "closed"
     }
-  }
+  },
+  "markdown": {
+    "instructions": [
+      "Responda em português brasileiro, a menos que o usuário peça outro idioma.",
+      "Host de produção da API de Contas: https://secureapi.onz.finance/api/v2. Nunca use api.example.com.",
+      "Host de produção da API de QRCodes (Pix recebedor): https://pix.onz.finance. Token em POST /oauth/token.",
+      "Todas as APIs exigem mTLS + OAuth 2.0 client_credentials e allowlist de IP. O playground interativo no browser não funciona por causa do mTLS.",
+      "O header x-account-id só se aplica a contas BaaS (Banking API / credenciais filhas). Não enviar em Pix/QRCodes de parceiro tradicional.",
+      "Não invente endpoints. Use apenas paths documentados no OpenAPI correspondente (openapi/*.yaml|json).",
+      "Cobranças Pix no padrão Bacen (cob/cobv/rec) são a API de QRCodes. Cobranças Pix/boleto/híbrido pela API de Contas estão em /contas/invoices."
+    ]
+  },
+  "navigation": {
+    "global": {
+      "anchors": [
+        {
+          "anchor": "Portal atual",
+          "icon": "arrow-up-right-from-square",
+          "href": "https://developers.onz.software"
+        }
+      ]
+    },
+    "products": [
+      {
+        "product": "Início",
+        "description": "Primeiros passos, autenticação, sandbox e FAQ",
+        "icon": "house",
+        "groups": [
+          {
+            "group": "Começar",
+            "pages": [
+              "index",
+              "getting-started/sandbox",
+              "getting-started/roteiro",
+              "getting-started/autenticacao",
+              "getting-started/webhook",
+              "getting-started/assuntos-relacionados-pix",
+              "getting-started/perguntas-frequentes"
+            ]
+          }
+        ]
+      },
+      {
+        "product": "QRCodes",
+        "description": "Cobranças Pix no padrão Bacen (PSP recebedor)",
+        "icon": "qrcode",
+        "tabs": [
+          {
+            "tab": "Guias",
+            "groups": [
+              {
+                "group": "Jornadas",
+                "pages": [
+                  "qrcodes/jornada-cobranca",
+                  "qrcodes/autenticacao-api-pix",
+                  "qrcodes/cobranca-imediata",
+                  "qrcodes/cobranca-com-vencimento",
+                  "qrcodes/pix-automatico-jornadas",
+                  "qrcodes/webhook-api-qrcodes"
+                ]
+              }
+            ]
+          },
+          {
+            "tab": "Referência",
+            "openapi": {
+              "source": "openapi/qrcodes.yaml",
+              "directory": "api-reference/qrcodes",
+              "overlays": [
+                "overlays/qrcodes-servers.yaml"
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "product": "Contas",
+        "description": "Pagamentos Pix, chaves, invoices, MED e crédito trabalhador",
+        "icon": "building-columns",
+        "tabs": [
+          {
+            "tab": "Guias",
+            "groups": [
+              {
+                "group": "Começar",
+                "pages": [
+                  "contas/autenticacao-api-contas",
+                  "contas/pagamentos",
+                  "contas/chaves-pix",
+                  "contas/estatisticas-dict",
+                  "contas/fila-saida",
+                  "contas/infracoes",
+                  "contas/med",
+                  "contas/webhook-api-contas"
+                ]
+              },
+              {
+                "group": "Cobranças Pix e boleto",
+                "root": "contas/invoices",
+                "pages": [
+                  "contas/invoices/jornada",
+                  "contas/invoices/cobrancas",
+                  "contas/invoices/pagadores",
+                  "contas/invoices/webhook"
+                ]
+              },
+              {
+                "group": "Crédito Trabalhador",
+                "root": "contas/credito-trabalhador",
+                "pages": [
+                  {
+                    "group": "Propostas eConsignado CLT",
+                    "root": "contas/credito-trabalhador/propostas-econsignado-clt",
+                    "pages": [
+                      "contas/credito-trabalhador/propostas-econsignado-clt/listar-leads",
+                      "contas/credito-trabalhador/propostas-econsignado-clt/enviar-propostas",
+                      "contas/credito-trabalhador/propostas-econsignado-clt/registrar-desfecho"
+                    ]
+                  },
+                  {
+                    "group": "Dataprev",
+                    "root": "contas/credito-trabalhador/dataprev",
+                    "pages": [
+                      "contas/credito-trabalhador/dataprev/enviar-autorizacao-fgts",
+                      "contas/credito-trabalhador/dataprev/consultar-status-autorizacao",
+                      "contas/credito-trabalhador/dataprev/consultar-saldo-fgts"
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "tab": "Referência",
+            "openapi": {
+              "source": "openapi/accounts.yaml",
+              "directory": "api-reference/contas",
+              "overlays": [
+                "overlays/accounts-servers.yaml"
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "product": "Banking API",
+        "description": "BaaS: contas, pessoas, onboarding, tarifas e credenciais Pix",
+        "icon": "building",
+        "tabs": [
+          {
+            "tab": "Guias",
+            "groups": [
+              {
+                "group": "Começar",
+                "pages": [
+                  "banking/getting-started",
+                  "banking/auth-and-mtls"
+                ]
+              },
+              {
+                "group": "Jornadas",
+                "pages": [
+                  "banking/onboarding-journey",
+                  "banking/balance-flow",
+                  "banking/pix-manager-credentials-journey"
+                ]
+              },
+              {
+                "group": "Gerenciamento",
+                "pages": [
+                  "banking/account-management",
+                  "banking/people-management",
+                  "banking/baas-management",
+                  "banking/fee-rules",
+                  "banking/baas-users"
+                ]
+              },
+              {
+                "group": "Avançado",
+                "pages": [
+                  "banking/errors-and-retries",
+                  "banking/security-requirements",
+                  "banking/partner-onboarding",
+                  "banking/changelog"
+                ]
+              }
+            ]
+          },
+          {
+            "tab": "Referência",
+            "openapi": {
+              "source": "openapi/banking-api.json",
+              "directory": "api-reference/banking",
+              "overlays": [
+                "overlays/banking-servers.yaml"
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "product": "CloudPix",
+        "description": "ICOM, DICT, MED e infra Pix",
+        "icon": "cloud",
+        "tabs": [
+          {
+            "tab": "Visão geral",
+            "pages": [
+              "cloudpix/index"
+            ]
+          },
+          {
+            "tab": "Referência",
+            "openapi": {
+              "source": "openapi/cloudpix.yaml",
+              "directory": "api-reference/cloudpix"
+            }
+          }
+        ]
+      },
+      {
+        "product": "SPB",
+        "description": "Sistema de Pagamentos Brasileiro",
+        "icon": "network-wired",
+        "tabs": [
+          {
+            "tab": "Visão geral",
+            "pages": [
+              "spb/index"
+            ]
+          },
+          {
+            "tab": "Referência",
+            "openapi": {
+              "source": "openapi/spb.yaml",
+              "directory": "api-reference/spb"
+            }
+          }
+        ]
+      },
+      {
+        "product": "Onboarding",
+        "description": "Abertura de contas",
+        "icon": "id-card",
+        "tabs": [
+          {
+            "tab": "Visão geral",
+            "pages": [
+              "onboarding/index"
+            ]
+          },
+          {
+            "tab": "Referência",
+            "openapi": {
+              "source": "openapi/onboarding.yaml",
+              "directory": "api-reference/onboarding",
+              "overlays": [
+                "overlays/onboarding-servers.yaml"
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "product": "Cash",
+        "description": "Operações de caixa (interno)",
+        "icon": "vault",
+        "tabs": [
+          {
+            "tab": "Visão geral",
+            "pages": [
+              "cash/index"
+            ]
+          },
+          {
+            "tab": "Referência",
+            "openapi": {
+              "source": "openapi/cash-operations.yaml",
+              "directory": "api-reference/cash"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "redirects": [
+    {
+      "source": "/docs/intro",
+      "destination": "/"
+    },
+    {
+      "source": "/docs/ambiente-sandbox",
+      "destination": "/getting-started/sandbox"
+    },
+    {
+      "source": "/docs/roteiro-sugestao-integracao",
+      "destination": "/getting-started/roteiro"
+    },
+    {
+      "source": "/docs/autenticacao",
+      "destination": "/getting-started/autenticacao"
+    },
+    {
+      "source": "/docs/webhook",
+      "destination": "/getting-started/webhook"
+    },
+    {
+      "source": "/docs/assuntos-relacionados-pix",
+      "destination": "/getting-started/assuntos-relacionados-pix"
+    },
+    {
+      "source": "/docs/perguntas-frequentes",
+      "destination": "/getting-started/perguntas-frequentes"
+    },
+    {
+      "source": "/docs/cobrancas/:slug*",
+      "destination": "/qrcodes/:slug*"
+    },
+    {
+      "source": "/docs/pagamentos/:slug*",
+      "destination": "/contas/:slug*"
+    },
+    {
+      "source": "/docs/banking-api/:slug*",
+      "destination": "/banking/:slug*"
+    },
+    {
+      "source": "/reference/qrcodes",
+      "destination": "/api-reference/qrcodes"
+    },
+    {
+      "source": "/reference/accounts",
+      "destination": "/api-reference/contas"
+    },
+    {
+      "source": "/reference/cloudpix",
+      "destination": "/api-reference/cloudpix"
+    },
+    {
+      "source": "/reference/onboarding",
+      "destination": "/api-reference/onboarding"
+    },
+    {
+      "source": "/reference/spb",
+      "destination": "/api-reference/spb"
+    },
+    {
+      "source": "/reference/cash-operations",
+      "destination": "/api-reference/cash"
+    },
+    {
+      "source": "/banking-api/api-reference",
+      "destination": "/api-reference/banking"
+    }
+  ]
 }

@@ -1,0 +1,222 @@
+---
+title: "Getting Started"
+description: "Este é o caminho mais rápido para começar a consumir a Banking API."
+---
+
+<Note>
+O host da Banking API vem da credencial criada no CORE. Os exemplos desta POC usam `https://secureapi.onz.finance`. Não use `api.example.com` nem `api.bancodigital.com`. Paths **não** levam o prefixo `/api/v2` da API de Contas — o token é `POST /auth/token`.
+</Note>
+
+Este é o caminho mais rápido para começar a consumir a Banking API.
+
+Se você está começando agora, use esta página como guia rápido para sair do zero até sua primeira chamada autenticada.
+
+## O que você vai concluir ao final
+
+Ao concluir este guia, você terá:
+
+1. Uma credencial ativa com `client_id`, `client_secret` e certificado mTLS
+2. Um token emitido com sucesso
+3. Sua primeira chamada autenticada à API
+
+## Pré-requisitos
+
+Antes de começar, você precisa ter:
+
+- acesso ao ambiente correto da Banking API
+- acesso ao CORE para criar a credencial
+- uma ferramenta ou biblioteca que suporte mTLS (`curl`, Bruno, Postman ou seu backend próprio)
+
+## Fluxo resumido
+
+```text
+1. Criar credencial no CORE (certificado gerado automaticamente)
+2. Salvar as informações exibidas e baixar o certificado
+3. Obter token em /auth/token com mTLS
+4. Usar o token nas chamadas protegidas
+```
+
+## Passo 1: Criar a credencial
+
+No CORE:
+
+1. Acesse **Administração > API do Core**
+2. Clique em **Nova credencial**
+3. Preencha os campos:
+   - **Nome**: nome da sua integração (ex: `minha-api-producao`)
+   - **Descrição** (opcional): texto livre para identificar o uso
+   - **IPs permitidos**: informe pelo menos um IP ou CIDR de onde serão feitas as chamadas
+4. Clique em **Criar credencial**
+
+Ao criar, o sistema automaticamente:
+
+- gera o `client_id` a partir do nome informado
+- gera o `client_secret` (exibido uma única vez)
+- emite um certificado mTLS com validade de 365 dias vinculado à credencial
+- gera a senha do PFX do certificado
+
+## Passo 2: Salvar as informações
+
+Após a criação, um modal exibirá todas as informações necessárias. **Essas informações são exibidas apenas uma vez.**
+
+Salve em local seguro:
+
+| Informação      | Uso                                                     |
+| --------------- | ------------------------------------------------------- |
+| `client_id`     | Campo `client_id` na request de token                   |
+| `client_secret` | Campo `client_secret` na request de token               |
+| Senha do PFX    | Necessária para abrir o arquivo `.pfx` do certificado   |
+| Arquivo ZIP     | Contém o certificado (`.pem` e `.pfx`) para uso no mTLS |
+
+Clique em **Baixar certificado (.zip)** para fazer o download. O ZIP contém:
+
+- `banking-api-certificate-{id}.pem` — certificado + chave privada em formato PEM (sem senha)
+- `banking-api-certificate-{id}.pfx` — certificado em formato PKCS#12 (protegido pela senha do PFX)
+
+## Passo 3: Obter token
+
+O endpoint de autenticação é:
+
+**POST** `/auth/token`
+
+A chamada deve ser feita com:
+
+- **mTLS** usando o certificado vinculado à credencial
+- corpo JSON com `client_id`, `client_secret` e `grant_type`
+
+### Exemplo com curl
+
+```bash
+curl -X POST https://secureapi.onz.finance/auth/token \
+  --cert client.pem \
+  --key client.key \
+  --cacert ca.crt \
+  -H "Content-Type: application/json" \
+  -d '{
+    "client_id": "minha-api-producao",
+    "client_secret": "seu-client-secret",
+    "grant_type": "client_credentials"
+  }'
+```
+
+### Resposta de sucesso
+
+```json
+{
+  "access_token": "eyJhbGciOi...",
+  "token_type": "Bearer",
+  "expires_in": 3600
+}
+```
+
+### Erros comuns nesta etapa
+
+| Erro                             | Causa                                                                                                        |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `401 Invalid Credentials`        | `client_id` ou `client_secret` incorreto                                                                     |
+| `401 Invalid Client Certificate` | O certificado mTLS não corresponde ao vinculado na credencial, está expirado ou foi emitido por CA diferente |
+| `403 Forbidden`                  | O IP de origem não está na lista de IPs permitidos da credencial                                             |
+
+## Passo 4: Fazer sua primeira requisição
+
+Use o mesmo certificado mTLS e envie o token no header `Authorization`:
+
+```bash
+curl -X GET "https://secureapi.onz.finance/accounts/123/balance" \
+  --cert client.pem \
+  --key client.key \
+  --cacert ca.crt \
+  -H "Authorization: Bearer SEU_ACCESS_TOKEN" \
+  -H "Content-Type: application/json"
+```
+
+### Exemplo de resposta
+
+```json
+{
+  "accountId": "123",
+  "balance": {
+    "available": 1500.5,
+    "current": 2000.0,
+    "blocked": 500.5
+  },
+  "currency": "BRL",
+  "lastUpdated": "2025-11-19T10:30:00Z"
+}
+```
+
+## Exemplo em Node.js
+
+```typescript
+import axios from 'axios';
+import https from 'https';
+import { readFileSync } from 'fs';
+
+const API_BASE_URL = 'https://secureapi.onz.finance';
+const CLIENT_ID = process.env.CLIENT_ID!;
+const CLIENT_SECRET = process.env.CLIENT_SECRET!;
+
+const httpsAgent = new https.Agent({
+  cert: readFileSync(process.env.CERT_PATH!),
+  key: readFileSync(process.env.KEY_PATH!),
+  ca: readFileSync(process.env.CA_PATH!),
+});
+
+async function getToken() {
+  const response = await axios.post(
+    `${API_BASE_URL}/auth/token`,
+    {
+      client_id: CLIENT_ID,
+      client_secret: CLIENT_SECRET,
+      grant_type: 'client_credentials',
+    },
+    {
+      headers: { 'Content-Type': 'application/json' },
+      httpsAgent,
+    }
+  );
+
+  return response.data.access_token;
+}
+
+async function getBalance(token: string, accountId: string) {
+  const response = await axios.get(
+    `${API_BASE_URL}/accounts/${accountId}/balance`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      httpsAgent,
+    }
+  );
+
+  return response.data;
+}
+
+(async () => {
+  const token = await getToken();
+  const balance = await getBalance(token, '123');
+  console.log(balance);
+})();
+```
+
+## Rotação de certificados
+
+:::info Certificado avulso para rotação
+O certificado criado junto com a credencial tem validade de 365 dias. Antes do vencimento, você pode emitir um novo certificado avulso e vinculá-lo à credencial existente, sem precisar recriar a credencial.
+
+Para isso, na tela **API do Core**:
+
+1. Clique em **Cadastrar certificado avulso**
+2. Informe o Common Name (CN) e uma descrição
+3. Após a emissão, salve a senha do PFX e baixe o certificado
+4. O novo certificado pode ser vinculado à credencial como certificado de rotação
+
+Cada credencial suporta até **2 certificados ativos simultaneamente**, permitindo rotação sem downtime.
+:::
+
+## Próximos Passos
+
+1. [Authentication & mTLS](/banking/auth-and-mtls) — detalhes técnicos da autenticação
+2. [Partner Onboarding](/banking/partner-onboarding) — processo de onboarding do parceiro
+3. [Balance Flow](/banking/balance-flow) — fluxo de consulta de saldo

@@ -1,0 +1,248 @@
+---
+title: "People Management"
+description: "Este guia apresenta o fluxo completo para gerenciar pessoas (físicas e jurídicas) através da API."
+---
+Este guia apresenta o fluxo completo para gerenciar pessoas (físicas e jurídicas) através da API.
+
+## 📋 Visão Geral
+
+Nesta jornada, você aprenderá a:
+
+1. ✅ Consultar informações de pessoas
+2. ✅ Buscar pessoas por CPF/CNPJ
+3. ✅ Entender os diferentes tipos de pessoa
+4. ✅ Trabalhar com dados de pessoas físicas e jurídicas
+
+## 🎯 Cenário de Uso
+
+Imagine que você precisa:
+
+- Consultar dados de uma pessoa antes de criar uma conta
+- Validar CPF/CNPJ antes de processar transações
+- Buscar informações de titulares de contas
+
+## 📝 Passo 1: Consultar Pessoa por ID
+
+### Requisição
+
+```bash
+curl -X GET "https://secureapi.onz.finance/people/123" \
+  -H "Authorization: Bearer SEU_TOKEN"
+```
+
+### Resposta
+
+```json
+{
+  "id": "123",
+  "name": "João Silva",
+  "tradeName": null,
+  "document": "12345678900",
+  "type": "NATURAL_PERSON",
+  "birthDate": "1990-05-20T00:00:00Z",
+  "email": "joao.silva@example.com",
+  "baasId": "2c1a9f3e-8b7d-4c2a-9e1f-3a5b7c9d1e2f",
+  "status": "ACTIVE",
+  "createdAt": "2025-01-01T00:00:00Z",
+  "updatedAt": "2025-01-15T10:30:00Z",
+  "ownedAccountIds": ["123", "456"],
+  "permittedAccountIds": ["789"]
+}
+```
+
+> O endpoint de detalhe (`GET /people/{id}`) inclui `ownedAccountIds` (contas das quais a pessoa é titular) e `permittedAccountIds` (contas em que a pessoa tem permissão de acesso, sem ser titular). Esses campos **não** são retornados na listagem.
+
+## 📝 Passo 2: Buscar Pessoa por Documento
+
+### Requisição
+
+```bash
+curl -X GET "https://secureapi.onz.finance/people?document=12345678900" \
+  -H "Authorization: Bearer SEU_TOKEN"
+```
+
+### Resposta
+
+A listagem retorna `meta` (paginação) e `data` (array de pessoas). Os itens da listagem **não** incluem `ownedAccountIds`/`permittedAccountIds`.
+
+```json
+{
+  "meta": {
+    "total": 1,
+    "perPage": 10,
+    "currentPage": 1,
+    "firstPage": 1,
+    "lastPage": 1,
+    "nextPage": null,
+    "prevPage": null
+  },
+  "data": [
+    {
+      "id": "123",
+      "name": "João Silva",
+      "tradeName": null,
+      "document": "12345678900",
+      "type": "NATURAL_PERSON",
+      "birthDate": "1990-05-20T00:00:00Z",
+      "email": "joao.silva@example.com",
+      "baasId": "2c1a9f3e-8b7d-4c2a-9e1f-3a5b7c9d1e2f",
+      "status": "ACTIVE",
+      "createdAt": "2025-01-01T00:00:00Z",
+      "updatedAt": "2025-01-15T10:30:00Z"
+    }
+  ]
+}
+```
+
+> Para restringir a listagem às pessoas de um parceiro BaaS, use o filtro `?baasId=<uuid>`.
+
+## 📊 Tipos de Pessoa
+
+| Código           | Tipo            | Descrição              |
+| ---------------- | --------------- | ---------------------- |
+| `NATURAL_PERSON` | Pessoa Física   | Pessoa física (CPF)    |
+| `LEGAL_PERSON`   | Pessoa Jurídica | Pessoa jurídica (CNPJ) |
+
+## 💻 Exemplo Completo em Node.js
+
+```typescript
+import axios from 'axios';
+import https from 'https';
+import { readFileSync } from 'fs';
+
+const API_BASE_URL = 'https://secureapi.onz.finance';
+const CLIENT_ID = 'seu-client-id';
+const CLIENT_SECRET = 'seu-client-secret';
+const httpsAgent = new https.Agent({
+  cert: readFileSync(process.env.CERT_PATH!),
+  key: readFileSync(process.env.KEY_PATH!),
+  ca: readFileSync(process.env.CA_PATH!),
+});
+
+// 1. Obter token
+async function getToken() {
+  const response = await axios.post(
+    `${API_BASE_URL}/auth/token`,
+    {
+      grant_type: 'client_credentials',
+      client_id: CLIENT_ID,
+      client_secret: CLIENT_SECRET,
+    },
+    {
+      headers: { 'Content-Type': 'application/json' },
+      httpsAgent,
+    },
+  );
+  return response.data.access_token;
+}
+
+// 2. Consultar pessoa por ID
+async function getPerson(token: string, personId: string) {
+  const response = await axios.get(
+    `${API_BASE_URL}/people/${personId}`,
+    {
+      headers: { Authorization: `Bearer ${token}` },
+      httpsAgent,
+    },
+  );
+  return response.data;
+}
+
+// 3. Buscar pessoa por documento
+async function findPersonByDocument(token: string, document: string) {
+  const response = await axios.get(
+    `${API_BASE_URL}/people?document=${document}`,
+    {
+      headers: { Authorization: `Bearer ${token}` },
+      httpsAgent,
+    },
+  );
+  return response.data;
+}
+
+// 4. Validar documento
+function validateDocument(
+  document: string,
+  type: 'NATURAL_PERSON' | 'LEGAL_PERSON',
+): boolean {
+  if (type === 'NATURAL_PERSON') {
+    // CPF: 11 dígitos
+    return /^\d{11}$/.test(document);
+  } else {
+    // CNPJ: 14 dígitos
+    return /^\d{14}$/.test(document);
+  }
+}
+
+// Uso
+(async () => {
+  try {
+    const token = await getToken();
+
+    // Consultar pessoa por ID
+    const person = await getPerson(token, '123');
+    console.log('Pessoa:', person);
+
+    // Buscar por documento
+    const personByDoc = await findPersonByDocument(token, '12345678900');
+    console.log('Pessoa encontrada:', personByDoc);
+
+    // Validar documento
+    if (
+      validateDocument(
+        person.document,
+        person.type as 'NATURAL_PERSON' | 'LEGAL_PERSON',
+      )
+    ) {
+      console.log('✅ Documento válido');
+    } else {
+      console.log('❌ Documento inválido');
+    }
+  } catch (error) {
+    console.error('Erro:', error.response?.data || error.message);
+  }
+})();
+```
+
+## ⚠️ Tratamento de Erros
+
+### Pessoa Não Encontrada (404)
+
+```json
+{
+  "type": "https://secureapi.onz.finance/errors/person-not-found",
+  "title": "Person Not Found",
+  "status": 404,
+  "detail": "Person with ID 123 not found",
+  "correlationId": "550e8400-e29b-41d4-a716-446655440000"
+}
+```
+
+### Documento Inválido (400)
+
+```json
+{
+  "type": "https://secureapi.onz.finance/errors/invalid-document",
+  "title": "Invalid Document",
+  "status": 400,
+  "detail": "Document must be a valid CPF (11 digits) or CNPJ (14 digits)",
+  "correlationId": "550e8400-e29b-41d4-a716-446655440000"
+}
+```
+
+## ✅ Checklist de Implementação
+
+- [ ] Implementar consulta de pessoa por ID
+- [ ] Implementar busca por documento
+- [ ] Adicionar validação de documento
+- [ ] Implementar tratamento de erros
+- [ ] Adicionar logs com correlation ID
+- [ ] Testar cenários de pessoa não encontrada
+
+## 🔄 Próximos Passos
+
+Agora que você sabe gerenciar pessoas, explore:
+
+1. **[Gerenciar Contas](/banking/account-management)** - Fluxo completo de gestão de contas
+2. **[Balance Flow](/banking/balance-flow)** - Como consultar saldos
+3. **[Errors & Retries](/banking/errors-and-retries)** - Tratamento de erros e boas práticas

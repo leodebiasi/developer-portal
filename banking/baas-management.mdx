@@ -1,0 +1,140 @@
+---
+title: "BaaS Management"
+description: "Este guia apresenta como listar os parceiros BaaS (Banking as a Service) configurados para a instituição e como usar o baasId para segmentar as demais listagens da API."
+---
+Este guia apresenta como listar os parceiros **BaaS** (Banking as a Service) configurados para a instituição e como usar o `baasId` para segmentar as demais listagens da API.
+
+Para regras de débito automático e usuários do portal do parceiro, veja:
+
+- [Fee Rules](/banking/fee-rules)
+- [BaaS Users](/banking/baas-users)
+
+## 📋 Visão Geral
+
+Nesta jornada, você aprenderá a:
+
+1. ✅ Listar os parceiros BaaS da instituição
+2. ✅ Entender a conta principal (bucket) de cada parceiro
+3. ✅ Usar o `baasId` para filtrar contas, pessoas, transações, movimentações, infrações e devoluções
+
+## 🎯 Cenário de Uso
+
+Instituições que operam em modelo BaaS atendem múltiplos parceiros sobre a mesma infraestrutura. Cada parceiro possui uma **conta principal** (bucket) e um identificador (`baasId`) que permite segmentar os dados por parceiro.
+
+## 📝 Passo 1: Listar Parceiros BaaS
+
+### Requisição
+
+```bash
+curl -X GET "https://secureapi.onz.finance/baas?page=1&perPage=20" \
+  -H "Authorization: Bearer SEU_TOKEN"
+```
+
+### Resposta
+
+```json
+{
+  "meta": {
+    "total": 1,
+    "perPage": 20,
+    "currentPage": 1,
+    "firstPage": 1,
+    "lastPage": 1,
+    "nextPage": null,
+    "prevPage": null
+  },
+  "data": [
+    {
+      "baasId": "2c1a9f3e-8b7d-4c2a-9e1f-3a5b7c9d1e2f",
+      "name": "Parceiro Exemplo S.A.",
+      "tradeName": "Parceiro Exemplo",
+      "document": "12345678000199",
+      "email": "contato@parceiro.com",
+      "mainUrl": "https://parceiro.com",
+      "financeUrl": "https://finance.parceiro.com",
+      "support": "suporte@parceiro.com",
+      "baasAccountId": 1001,
+      "baasAccountNumber": 50001,
+      "status": "ACTIVE",
+      "createdAt": "2025-01-01T00:00:00Z",
+      "updatedAt": "2025-01-15T10:30:00Z"
+    }
+  ]
+}
+```
+
+#### Entendendo a Resposta
+
+| Campo               | Tipo            | Descrição                                                   |
+| ------------------- | --------------- | ----------------------------------------------------------- |
+| `baasId`            | string (uuid)   | Identificador do parceiro BaaS                              |
+| `name`              | string          | Razão social do parceiro                                    |
+| `tradeName`         | string          | Nome fantasia do parceiro                                   |
+| `document`          | string          | CNPJ do parceiro                                            |
+| `email`             | string          | E-mail de contato do parceiro                               |
+| `mainUrl`           | string          | URL principal do parceiro                                   |
+| `financeUrl`        | string \| null  | URL do portal financeiro do parceiro                        |
+| `support`           | string \| null  | Identificador/contato de suporte do parceiro                |
+| `baasAccountId`     | number          | ID da conta principal (bucket) do parceiro                  |
+| `baasAccountNumber` | number          | Número da conta principal (bucket) do parceiro              |
+| `status`            | string          | Status operacional, derivado do status da conta principal   |
+| `createdAt`         | string          | Timestamp de criação (ISO 8601)                             |
+| `updatedAt`         | string          | Timestamp da última atualização (ISO 8601)                  |
+
+## 🔍 Filtros Disponíveis
+
+A listagem de BaaS aceita os parâmetros padrão de paginação e ordenação:
+
+| Parâmetro   | Tipo   | Descrição                       | Exemplo             |
+| ----------- | ------ | ------------------------------- | ------------------- |
+| `page`      | number | Número da página (inicia em 1)  | `?page=1`           |
+| `perPage`   | number | Itens por página (máx 100)      | `?perPage=20`       |
+| `filter`    | string | Busca textual                   | `?filter=parceiro`  |
+| `sortBy`    | string | Campo para ordenação            | `?sortBy=createdAt` |
+| `sortOrder` | string | Ordem (asc/desc)                | `?sortOrder=desc`   |
+
+## 📝 Passo 2: Segmentar Outras Listagens por `baasId`
+
+De posse do `baasId`, você pode restringir as demais listagens a um parceiro específico:
+
+```bash
+# Contas de um parceiro BaaS
+curl -X GET "https://secureapi.onz.finance/accounts?baasId=2c1a9f3e-8b7d-4c2a-9e1f-3a5b7c9d1e2f" \
+  -H "Authorization: Bearer SEU_TOKEN"
+
+# Pessoas de um parceiro BaaS
+curl -X GET "https://secureapi.onz.finance/people?baasId=2c1a9f3e-8b7d-4c2a-9e1f-3a5b7c9d1e2f" \
+  -H "Authorization: Bearer SEU_TOKEN"
+```
+
+O filtro `baasId` está disponível em: `accounts`, `people`, `transactions`, `movements`, `infractions` e `refunds`.
+
+> Nas listagens de `transactions`, `movements` e `infractions`, os parâmetros `startDate` e `endDate` são **obrigatórios** (devem ser enviados juntos) e o intervalo não pode exceder **30 dias**. Em `refunds` esses parâmetros são opcionais.
+
+## ⚠️ Tratamento de Erros
+
+### Não Autorizado (401)
+
+```json
+{
+  "type": "about:blank",
+  "title": "Unauthorized",
+  "status": 401,
+  "detail": "Token is invalid or expired",
+  "requestId": "550e8400-e29b-41d4-a716-446655440000"
+}
+```
+
+## ✅ Checklist de Implementação
+
+- [ ] Listar parceiros BaaS
+- [ ] Armazenar o `baasId` de cada parceiro
+- [ ] Usar `baasId` para segmentar contas e pessoas
+- [ ] Respeitar a obrigatoriedade de `startDate`/`endDate` em transações, movimentações e infrações
+- [ ] Implementar tratamento de erros
+
+## 🔄 Próximos Passos
+
+1. **[Account Management](/banking/account-management)** - Gerenciar contas (com filtro `baasId`)
+2. **[People Management](/banking/people-management)** - Gerenciar pessoas (com filtro `baasId`)
+3. **[Errors & Retries](/banking/errors-and-retries)** - Tratamento de erros e boas práticas

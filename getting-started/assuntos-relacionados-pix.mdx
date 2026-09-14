@@ -1,0 +1,246 @@
+---
+title: "Assuntos relacionados ao Pix"
+description: "CPF (Cadastro de Pessoas Físicas) é um número de identificação fiscal usado no Brasil para pessoas físicas. É como se fosse um número de identidade fiscal individual que todo cidad…"
+---
+### CPF
+
+CPF (Cadastro de Pessoas Físicas) é um número de identificação fiscal usado no Brasil para pessoas físicas. É como se fosse um número de identidade fiscal individual que todo cidadão brasileiro ou residente estrangeiro precisa ter.  
+É utilizado para diversos fins, incluindo transações financeiras, abertura de contas bancárias, pagamento de impostos, entre outros.
+Exemplo: 268.211.520-98  
+Formato JSON: 26821152098  
+Validação de formato: ^\[0-9\]\{11\}$
+
+### CNPJ
+
+CNPJ (Cadastro Nacional da Pessoa Jurídica) é um número de identificação fiscal utilizado no Brasil para empresas e outras pessoas jurídicas. É como o CPF, mas para empresas. Toda empresa cadastrada no Brasil precisa ter um CNPJ, que é utilizado para fins comerciais como abertura de contas bancárias, emissão de notas fiscais, pagamento de impostos, contratação de funcionários, entre outros.
+Exemplo: 58.255.572/0001-00
+Formato JSON: 58255572000100
+Validação de formato: ^\[0-9\]\{14\}$
+
+### Chave Pix
+
+Chave Pix é como uma espécie de "endereço único" que você pode usar para receber pagamentos instantâneos no Brasil, de forma rápida e prática. Essa chave é como uma identificação única vinculada à sua conta bancária no Brasil. Mesmo estando nos EUA, você pode ter uma conta em banco brasileiro e, portanto, utilizar o Pix.
+A Chave Pix pode ser associada a diversos tipos de informações, como CPF/CNPJ, telefone, e-mail ou até mesmo uma chave aleatória gerada pelo sistema. Essa variedade de opções permite que você escolha a forma mais prática de receber pagamentos sem a necessidade de compartilhar dados bancários sensíveis, como número de agência e conta.
+Quando alguém faz uma transferência para você, basta fornecer sua Chave Pix, seja CPF/CNPJ, telefone, e-mail ou chave aleatória. Isto simplifica muito o processo de pagamento, pois elimina a necessidade de preenchimento de diversos dados bancários, como era exigido anteriormente.
+
+
+| Tipo chave Pix     | Descrição                                        | Validação de formato                                                                                                   |
+| ---------------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| CPF              | Número de identificação fiscal                                         | ^\[0-9\]\{11\}$                                                                                                       |
+| CNPJ             | Número fiscal do empresário                         | ^\[0-9\]\{14\}$                                                                                                       |
+| Número de telefone     | Número de telefone                                       | ^+\[1-9\]\[0-9\]\\d\{1,14\}$                                                                                          |
+| Endereço de e-mail   | Endereço de e-mail                                     | ^[a-z0-9.!#$&'*+\\/=?^_`\{\|}~-]+@[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)\*$ |
+| EVP (Chave aleatória) | Chave aleatória (gerado pelo Banco Central do Brasil) | \[0-9a-f\]{8}-\[0-9a-f\]{4}-\[0-9a-f\]{4}-\[0-9a-f\]{4}-\[0-9a-f\]{12}$                                             |
+
+### MTLS
+
+MTLS (Mutual Transport Layer Security), ou Mutual TLS, é uma extensão do protocolo TLS (Transport Layer Security) que fornece autenticação mútua entre clientes e servidores na comunicação segura pela Internet. O MTLS adiciona uma camada adicional de segurança à comunicação TLS, garantindo que tanto o cliente quanto o servidor sejam autenticados antes de estabelecer uma conexão segura. Isto é especialmente útil em cenários onde a identidade do cliente é tão importante quanto a do servidor, como em serviços bancários online.  
+**Importante** Tanto os certificados de teste quanto os de produção são certificados autoassinados e, portanto, isso deve ser levado em consideração no processo de desenvolvimento da integração.
+
+### TransactionId
+ 
+Este identificador serve para identificar exclusivamente uma cobrança específica. Portanto, o txid é utilizado pelo usuário recebedor em seus processos de conciliação de pagamentos recebidos via Pix. Este identificador pode ser gerado automaticamente pela API Onz (apenas para cobranças imediatas), ou pode ser fornecido pelo parceiro. Neste caso, o parceiro deverá garantir que o valor do txId seja único para o receptor (CPF/CNPJ).  
+O txid deve ter comprimento mínimo de 26 caracteres e máximo de 35 caracteres. Os caracteres aceitos neste contexto são: A-Z, a-z, 0-9.
+Validação de formato: ^\[A-Za-z0-9\]{26,35}$
+
+### Status da cobrança
+
+O campo "status" representa o status da cobrança de pagamento imediato e pode assumir os seguintes estados:
+
+- ATIVA: Este status indica que a cobrança do Pix está ativa e disponível para pagamento. A cobrança está em andamento e pode ser cumprida pelo pagador.
+- CONCLUIDA (status final): Este status significa que a cobrança do Pix foi concluída com sucesso. A transação de pagamento associada à cobrança foi executada e os fundos foram transferidos do pagador para o destinatário.
+- REMOVIDA_PELO_USUARIO_RECEBEDOR (status final): Este status indica que a cobrança do Pix foi retirada ou cancelada pelo usuário recebedor (quem solicitou o pagamento). Esta ação pode ser iniciada pelo destinatário por vários motivos, como o cancelamento da transação, a necessidade de modificar os dados do pagamento ou outros motivos administrativos.
+- REMOVIDA_PELO_PSP (status final): Este status significa que a cobrança do Pix foi retirada ou cancelada pela Onz Finance. A remoção da cobrança pela Onz Finance pode ocorrer por motivos de conformidade, problemas técnicos ou outras considerações operacionais (como quando expirado, por exemplo).
+  
+
+### E2e (endToEndId)
+
+A identificação endToEndId (e2e) é um componente crucial que garante a rastreabilidade e integridade da transação. É um identificador exclusivo atribuído a cada transação de pagamento, permitindo o rastreamento de ponta a ponta, do pagador ao beneficiário. Este identificador permanece constante durante todo o ciclo de vida da transação, desde o início até a conclusão, e serve como ponto de referência para reconciliação e resolução de disputas.  
+O endToEndId normalmente é gerado pela parte iniciadora e incluído na instrução de pagamento. Pode consistir em vários elementos de dados, como uma combinação de caracteres alfanuméricos, números de referência de transação ou quaisquer outros identificadores especificados pelo sistema de pagamento. Este ID ajuda a diferenciar uma transação de outra e evita duplicação ou interpretação incorreta.  
+Além disso, o endToEndId desempenha um papel crucial na manutenção da integridade e segurança das transações. Garante que o pagamento chegue ao destinatário pretendido sem alteração ou interceptação por partes não autorizadas. Ao incluir este identificador, tanto o ordenante como o beneficiário podem verificar a autenticidade da transação e conciliá-la com os respetivos registros.  
+No geral, o endToEndId no pagamento Pix facilita o processamento eficiente de transações, aumenta a transparência e fortalece as medidas de segurança, contribuindo para um ecossistema de pagamentos confiável e contínuo.
+
+### Cálculo do valor da cobrança
+
+O valor final da cobrança, a ser calculado pela Onz Finance, será determinado de acordo com a seguinte fórmula (_Equação 1_):  
+![Equação #1](/images/charge-amount-calc-eq1.png)
+
+Onde:
+
+- Vf: valor final da cobrança, a ser pago pelo usuário pagante;
+- Vo: valor original da cobrança;
+- Va: valor de abatimento aplicável a cobrança;
+- Vd: valor do desconto aplicável a cobrança;
+- Vj: valor dos juros aplicáveis ​​pelo atraso no pagamento da cobrança;
+- Vm: valor da multa aplicável por atraso no pagamento da cobrança.
+
+### Cálculo do valor do bônus (Va)
+
+Por padrão, uma Cobrança Pix é criada sem nenhum bônus. O bônus deverá ser acordado entre o devedor e o beneficiário da cobrança, que é quem está autorizado a atualizar o valor da cobrança junto à Onz Finance.  
+O desconto pode ser aplicado em valor absoluto ou em percentagem do valor original, dependendo da modalidade de desconto escolhida. Se a modalidade escolhida pelo recebedor for de valor fixo, então o valor do desconto será o valor especificado pelo recebedor. Caso seja fornecido um valor percentual, o valor do desconto será calculado de acordo com a seguinte fórmula:
+![Equação #2](/images/charge-bonus-calc-eq2.png)  
+(_Equação 2_)
+
+Onde:
+
+- Va: valor do desconto aplicável a cobrança;
+- Vo: valor original da cobrança;
+- Ia: percentual de desconto, fornecido com 2 casas decimais.
+  
+O valor calculado para Va será truncado para duas casas decimais.
+
+### Cálculo de valor do desconto
+
+**(Vd)**
+
+#### Fixo até a data especificada
+
+Neste caso, o usuário recebedor deverá especificar os descontos, até uma determinada data. O usuário recebedor poderá definir até três datas anteriores ou iguais à data de vencimento. Adicionalmente, poderão indicar se o desconto será em valor absoluto ou percentual sobre o valor do documento.
+Se o valor do desconto for dado em porcentagem, será calculado através da seguinte fórmula:
+![Equação #3](/images/charge-discount-specify-datecalc-eq3.png)  
+(_Equação 3_)
+
+Onde:
+
+- Vd: valor do desconto;
+- Vo: valor original da cobrança;
+- Va: valor do desconto aplicável a cobrança;
+- Id: percentual de desconto, fornecido com 2 casas decimais.
+  
+Podem ser previstas até 3 datas para aplicação de descontos até a data de vencimento, inclusive. A data de cálculo deve ser comparada com a data mais antiga (elemento1) do array. Caso a data seja inferior ou igual a esta data, aplica-se o valor do desconto associado (absoluto ou percentual). Se a data for maior, é comparada com a data do segundo elemento, e assim sucessivamente.  
+O valor calculado para Vd será truncado para duas casas decimais.
+
+**Exemplo:**  
+`valor.desconto.modalidade = 1   valor.desconto.descontoDataFixa[0].data= “2024-12-10”   valor.desconto.descontoDataFixa[0].valorPerc = “300.00”`
+Neste exemplo, se o pagamento for realizado até o final do dia 10 de dezembro de 2024, o usuário receberá um desconto de R$ 300,00 (trezentos reais) sobre o valor a ser pago.
+
+#### Desconto para pagamento antecipado por dia
+
+O desconto poderá, alternativamente, ser concedido em valor absoluto ou percentual, por dia corrido ou dia útil anterior ao vencimento. Caso o desconto seja concedido em valor absoluto por dia de pagamento antecipado, deverá ser calculado através da seguinte fórmula:  
+
+![Equação #4](/images/charge-discount-by-early-payment-per-day-eq4.png)  
+(_Equação 4_)
+
+Onde:
+
+- Vd: valor do desconto;
+- Vdd: valor do desconto por dia de pagamento antecipado;
+- Dα: dias úteis ou corridos, dependendo da modalidade
+  
+Se dias corridos: Dα = Dc  
+Se dias úteis: Dα = Du  
+Dc: número de dias corridos entre a data de cálculo e a data de vencimento.  
+Se o resultado da subtração for menor que zero, então Dc deverá ser zero:
+![Equação #5](/images/charge-discount-by-early-payment-per-day-eq5.png)  
+(_Equação 5_)
+
+Onde:
+**Datavenc - Datacalc :** diferença entre a data de vencimento e a data de cálculo da cobrança, em dias corridos. **Du:** número de dias úteis entre a data de cálculo e a data de vencimento. Se o resultado da subtração for menor que zero, então Du deverá ser zero. ![Equação #6](/images/charge-discount-by-early-payment-per-day-eq6.png)  
+(_Equação 6_)
+
+
+**Datavenc - Datacalc :** diferença entre a data de vencimento e a data de cálculo da cobrança, em dias úteis.  
+Caso o desconto tenha sido concedido em percentual por dia de pagamento antecipado, deverá ser calculado utilizando a seguinte fórmula
+![Equação #7](/images/charge-discount-by-early-payment-per-day-eq7.png)  
+(_Equação 7_)
+
+Onde:
+
+- Vd: valor do desconto;
+- Vo: valor original da cobrança;
+- Va: valor do desconto aplicável a cobrança;
+- Idd: Percentual de desconto por dia de pagamento antecipado, fornecido com 2 casas decimais;
+- Dα: dias úteis ou corridos, dependendo da modalidade
+- Se dias corridos: Dα = Dc
+- Se dias úteis: Dα = Du
+
+**Exemplo:**  
+`valor.desconto.modalidade = 3   valor.desconto.valorPerc = “100.00”   `Neste exemplo, vamos imaginar que o vencimento seja 10 de dezembro de 2024 e o usuário efetue o pagamento no dia 7 de dezembro. O número de dias corridos antecipados é de 3 (10 - 7), dando ao usuário direito a desconto de R$ 300,00 (3 x 100 reais) sobre o valor a ser pago. Por outro lado, se o usuário pagar na data de vencimento, não há pagamento antecipado e, portanto, o usuário não terá direito a nenhum desconto.
+
+### Cálculo do valor dos juros (Vj)
+Os juros podem ser fornecidos em valor absoluto, por dia corrido ou útil; eles também podem ser referenciados como uma porcentagem por dia, mês ou ano.
+
+#### Valor diário absoluto
+
+Se os juros forem fornecidos em valor absoluto, deverão ser calculados utilizando a seguinte fórmula:  
+![Equação #8](/images/charge-interest-calc-abs-val-eq8.png)  
+(_Equação 8_)
+
+Onde:
+
+- Vj: valor dos juros aplicáveis ​​pelo atraso no pagamento do faturamento;
+- Vjd: valor dos juros por dia de atraso no pagamento do faturamento;
+- Dα: dias úteis ou corridos, dependendo da modalidade
+- Se dias corridos: Dα = Dc
+- Se dias úteis: Dα = Du
+  
+**Dc** é o número de dias corridos entre a data de vencimento e a data de cálculo fornecida pelo recebedor. Se o resultado da subtração for menor que zero, então Dc deve ser zero.  
+![Equação #9](/images/charge-interest-calc-abs-val-eq9.png)  
+(_Equação 9_)
+
+Onde:  
+**DataCalc - Datavenc:** diferença entre a data de cálculo e a data de vencimento da fatura, em dias corridos.  
+**Du:** número de dias úteis entre a data de vencimento e a data de cálculo fornecida pelo recebedor. Se o resultado da subtração for menor que zero, então Du deve ser zero.  
+![Equação #10](/images/charge-interest-calc-abs-val-eq10.png)  
+(_Equação 10_)
+
+Onde:  
+**DataCalc - Datavenc:** diferença entre a data de cálculo e a data de vencimento da fatura, em dias úteis.
+
+#### Percentual de juros diários, mensais ou anuais
+
+Se os juros forem fornecidos como um percentual, o valor dos juros deve ser calculado usando a seguinte fórmula:  
+![Equação #11](/images/charge-interest-calc-perc-val-eq11.png)  
+(_Equação 11_)
+
+Onde:
+
+- Vj: valor dos juros aplicáveis ao atraso do pagamento da fatura;
+- Vo: valor original da fatura;
+- Va: valor de desconto aplicável à fatura;
+- ![Equação #11 Exp](/images/charge-interest-calc-perc-val-expl-eq11.png): fator de juros, a ser calculado com precisão de 6 casas decimais sem arredondamento (truncado);
+- Ij: taxa de juros (percentual), fornecida com 2 casas decimais;
+- Se a modalidade for "dias corridos", então:  
+    n: 1, 30 ou 360, dependendo de o percentual de juros ser diário, mensal ou anual;  
+    Dα = Dc (ver Equação 9).
+- Se a modalidade for "dias úteis", então:  
+    n: 1, 21 ou 252, dependendo de o percentual de juros ser diário, mensal ou anual;  
+    Dα = Du (ver Equação 10).
+
+O valor calculado para Vj deve ser truncado para duas casas decimais.
+
+### Cálculo do valor da multa
+
+**(Vm)**
+
+A multa pode ser fornecida como um valor absoluto ou como um percentual da obrigação. Se a modalidade escolhida pelo recebedor for um valor fixo, então o valor da multa é o montante especificado pelo recebedor.  
+Se um valor absoluto for fornecido, então o valor da multa será calculado de acordo com a seguinte fórmula:  
+![Equação #12](/images/charge-fine-calc-eq12.png)  
+(_Equação 12_)
+
+Onde:
+
+- Vm: valor da multa
+- k(Dα): assume os seguintes valores, dependendo de Dα
+
+![Equação #13](/images/charge-fine-calc-eq13.png)  
+(_Equação 13_)
+
+Onde:
+
+- Dα: calculado como descrito na Equação 9 ou Equação 10, dependendo de se os dias sem juros são dias corridos ou dias úteis.
+
+Assim, K assume o valor 0 (zero) se Dα for zero; e assume o valor 1 (um) para valores positivos não nulos de Dα.  
+Se um valor percentual for fornecido, então o valor da multa será calculado de acordo com a seguinte fórmula:  
+![Equação #14](/images/charge-fine-calc-eq14.png)  
+(_Equação 14_)
+
+Onde:
+
+- Vm: valor da multa;
+- Vo: valor original da fatura;
+- Va: valor de desconto aplicável à fatura;
+- Im: percentual da multa, fornecido com 2 casas decimais;
+- k(Dα): ver Equação 13.
+
+O valor calculado para Vm deve ser truncado para duas casas decimais.

@@ -1,0 +1,302 @@
+---
+title: "Onboarding do Parceiro"
+description: "Bem-vindo ao guia de onboarding da Banking API."
+---
+Bem-vindo ao guia de onboarding da Banking API.
+
+Esta página foi pensada para ser o roteiro principal de integração do parceiro: do primeiro alinhamento de conectividade até a primeira chamada autenticada com sucesso.
+
+## ✨ O que você vai concluir ao final
+
+Ao concluir este guia, você terá:
+
+1. Acesso liberado ao ambiente correto
+2. Um certificado de cliente pronto para uso em mTLS
+3. Uma credencial ativa com `client_id` e `client_secret`
+4. Um token emitido pelo endpoint atual
+5. Sua primeira chamada protegida funcionando
+
+## 🧭 Visão Geral da Jornada
+
+O onboarding segue esta sequência:
+
+```text
+1. Liberação de conectividade
+2. Geração ou cadastro do certificado
+3. Criação da credencial
+4. Configuração mTLS no seu backend
+5. Emissão de token
+6. Primeira chamada à API
+```
+
+## ✅ Pré-requisitos
+
+Antes de começar, tenha em mãos:
+
+- um backend ou BFF para consumir a Banking API
+- um IP público ou CIDR de saída definido
+- acesso ao CORE para provisionar certificado e credencial
+- uma ferramenta ou biblioteca que suporte mTLS
+
+> **Importante**
+>
+> Este guia foi escrito para o parceiro que vai consumir a API. Ele não depende de conhecimento sobre a rede interna da ONZ, apenas do contrato externo necessário para a integração.
+
+## 🌐 Fase 1: Liberação de conectividade
+
+Solicite à equipe ONZ a liberação do ambiente informando:
+
+- nome da instituição
+- CNPJ
+- ambiente desejado
+- IPs públicos ou CIDRs que farão as chamadas
+
+Depois da liberação, valide que o domínio do ambiente está acessível via HTTPS.
+
+## 🔐 Fase 2: Certificado de cliente
+
+No CORE:
+
+1. Acesse `Painel Gerencial ONZ > API do Core`
+2. Escolha um dos fluxos disponíveis:
+   - **Nova credencial completa**
+   - **Cadastro de certificado existente**
+   - **Emissão de certificado pela CA do ambiente**
+3. Baixe o material emitido:
+   - `client.crt` + `client.key`, ou
+   - `client.pfx`
+
+### 📌 Regras importantes
+
+- cada credencial aceita até **2 certificados ativos**
+- o segundo certificado pode ser usado para rotação
+- certificados revogados não devem ser reutilizados
+
+> **Recomendação**
+>
+> Se for sua primeira integração, o caminho mais simples costuma ser a criação de uma **nova credencial completa**, já com o certificado inicial vinculado.
+
+## 🪪 Fase 3: Credencial
+
+Crie a credencial no CORE com:
+
+- `Client ID`
+- `IPs permitidos`
+- certificado inicial vinculado
+
+Ao salvar:
+
+- copie o `Client Secret`
+- confirme que o certificado correto ficou associado à credencial
+
+> **Atenção**
+>
+> O `Client Secret` é exibido apenas no momento da criação. Armazene-o de forma segura.
+
+## 🛠️ Fase 4: Configuração no seu backend
+
+Sua aplicação deve fazer chamadas HTTPS com mTLS para a Banking API.
+
+### Exemplo em Node.js
+
+```typescript
+import axios from 'axios';
+import https from 'https';
+import { readFileSync } from 'fs';
+
+const httpsAgent = new https.Agent({
+  cert: readFileSync(process.env.CERT_PATH!),
+  key: readFileSync(process.env.KEY_PATH!),
+  ca: readFileSync(process.env.CA_PATH!),
+});
+
+const api = axios.create({
+  baseURL: 'https://secureapi.onz.finance',
+  httpsAgent,
+});
+```
+
+### Exemplo em Python
+
+```python
+import requests
+
+client_cert = ('/path/to/client.crt', '/path/to/client.key')
+ca_cert = '/path/to/ca.crt'
+
+response = requests.get(
+    'https://secureapi.onz.finance/accounts/123',
+    cert=client_cert,
+    verify=ca_cert,
+)
+```
+
+## 🤝 Fase 5: Teste de handshake TLS
+
+Antes de pedir token, valide se o certificado está sendo apresentado corretamente:
+
+```bash
+openssl s_client \
+  -connect secureapi.onz.finance:443 \
+  -cert client.crt \
+  -key client.key \
+  -CAfile ca.crt
+```
+
+Se estiver tudo certo, o resultado esperado inclui:
+
+```text
+Verify return code: 0 (ok)
+```
+
+## 🔑 Fase 6: Obter token
+
+O endpoint atual de autenticação é:
+
+**POST** `/auth/token`
+
+Essa chamada deve ser feita:
+
+- com o certificado mTLS vinculado à credencial
+- com `Content-Type: application/json`
+- com `grant_type: client_credentials`
+
+### Exemplo com `curl`
+
+```bash
+curl -X POST https://secureapi.onz.finance/auth/token \
+  --cert client.crt \
+  --key client.key \
+  --cacert ca.crt \
+  -H "Content-Type: application/json" \
+  -d '{
+    "client_id": "SEU_CLIENT_ID",
+    "client_secret": "SEU_CLIENT_SECRET",
+    "grant_type": "client_credentials"
+  }'
+```
+
+### Resposta esperada
+
+```json
+{
+  "access_token": "eyJhbGciOi...",
+  "token_type": "Bearer",
+  "expires_in": 3600
+}
+```
+
+## 🚀 Fase 7: Primeira chamada autenticada
+
+Depois de obter o token, continue usando o mesmo certificado mTLS nas chamadas protegidas:
+
+```bash
+TOKEN="seu-access-token"
+
+curl -X GET https://secureapi.onz.finance/accounts/123/balance \
+  --cert client.crt \
+  --key client.key \
+  --cacert ca.crt \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+## 💻 Exemplo completo em Node.js
+
+```typescript
+import axios from 'axios';
+import https from 'https';
+import { readFileSync } from 'fs';
+
+const client = axios.create({
+  baseURL: 'https://secureapi.onz.finance',
+  httpsAgent: new https.Agent({
+    cert: readFileSync(process.env.CERT_PATH!),
+    key: readFileSync(process.env.KEY_PATH!),
+    ca: readFileSync(process.env.CA_PATH!),
+  }),
+});
+
+async function getToken() {
+  const response = await client.post(
+    '/auth/token',
+    {
+      client_id: process.env.CLIENT_ID!,
+      client_secret: process.env.CLIENT_SECRET!,
+      grant_type: 'client_credentials',
+    },
+    {
+      headers: { 'Content-Type': 'application/json' },
+    },
+  );
+
+  return response.data.access_token;
+}
+
+async function getBalance(accountId: string) {
+  const token = await getToken();
+
+  const response = await client.get(
+    `/accounts/${accountId}/balance`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    },
+  );
+
+  return response.data;
+}
+```
+
+## 📋 Checklist de Go-Live
+
+- [ ] IP liberado para o ambiente
+- [ ] certificado criado ou importado no CORE
+- [ ] credencial criada
+- [ ] `client_secret` armazenado com segurança
+- [ ] certificado configurado no backend
+- [ ] handshake TLS validado
+- [ ] token emitido por `/auth/token`
+- [ ] primeira chamada protegida executada com sucesso
+
+## 🧯 Troubleshooting
+
+### `401 Invalid Credentials`
+
+Confira:
+
+- `client_id`
+- `client_secret`
+- status da credencial
+
+### `401 Invalid Client Certificate`
+
+Confira:
+
+- se o certificado enviado na requisição é o mesmo vinculado à credencial
+- se o certificado ainda está válido
+- se a chave privada corresponde ao certificado
+- se o certificado pertence à cadeia correta do ambiente
+
+### `403 Forbidden`
+
+Confira:
+
+- se o IP de saída da sua aplicação está na allowlist da credencial
+
+### Falha de handshake TLS
+
+Confira:
+
+- se `client.crt` e `client.key` correspondem entre si
+- se o `PFX` está com a senha correta
+- se o cliente confia na CA do ambiente
+
+## 📚 Próximos Passos
+
+Depois que o onboarding estiver concluído, continue por estes guias:
+
+1. [Getting Started](/banking/getting-started)
+2. [Authentication & mTLS](/banking/auth-and-mtls)
+
+[Showing lines 1-300 of 302. Use :301 to continue]

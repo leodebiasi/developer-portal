@@ -1,0 +1,3698 @@
+openapi: 3.0.3
+info:
+  contact:
+    email: contact@onz.software
+    name: ONZ-Software
+  description: >-
+    API Gateway for the Brazilian Payment System (SPB) — REST façade for SPB
+    operations (participant ↔ BACEN via IBM MQ, webhooks).
+  license:
+    name: Proprietary
+  termsOfService: https://onz.software
+  title: SPB API
+  version: v0.161.0
+tags:
+  - description: Liveness / readiness probes.
+    name: health
+    x-displayName: health
+  - description: Build / version info.
+    name: version
+    x-displayName: version
+  - description: Private / public key material for SPB signing.
+    name: certificates
+    x-displayName: certificates
+  - description: Institution balances (history + latest).
+    name: balances
+    x-displayName: balances
+  - description: STR (Sistema de Transferência de Reservas) status.
+    name: str
+    x-displayName: str
+  - description: >-
+      Core SPB operations (create, approve, reject, reply, response, generate,
+      get, list, analytics, audit-events).
+    name: operations
+    x-displayName: operations
+  - description: Operation lifecycle events (list, get, document, requeue).
+    name: events
+    x-displayName: events
+  - description: Transaction list / detail / receipt, CSV export and admin reprocess.
+    name: transactions
+    x-displayName: transactions
+  - description: Stored file metadata listing and binary download.
+    name: files
+    x-displayName: files
+  - description: SPB participant catalog (read-only listing).
+    name: participants
+    x-displayName: participants
+  - description: Institution statements.
+    name: statements
+    x-displayName: statements
+  - description: Audit-log read APIs.
+    name: audit-events
+    x-displayName: audit-events
+  - name: longpolling
+    description: Long-polling endpoint for consuming SPB responses.
+    x-displayName: longpolling
+  - name: consumers
+    description: Per-ISPB consumer lifecycle management.
+    x-displayName: consumers
+paths:
+  /api/v1/audit-events:
+    servers:
+      - url: /
+    get:
+      description: >-
+        Paginated audit-log entries for the tenant, optionally filtered by
+        period, actor, resource, action, operation, event or document.
+      parameters:
+        - description: 1-indexed page (default 1)
+          in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+        - description: Page size (default 20, max 100)
+          in: query
+          name: perPage
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+        - description: Sort key
+          in: query
+          name: sort
+          schema:
+            type: string
+            enum:
+              - occurred_at_asc
+              - occurred_at_desc
+        - description: Start date (inclusive) YYYY-MM-DD
+          in: query
+          name: from
+          schema:
+            type: string
+        - description: End date (inclusive) YYYY-MM-DD
+          in: query
+          name: to
+          schema:
+            type: string
+        - description: Actor filter (exact match)
+          in: query
+          name: actor
+          schema:
+            type: string
+        - description: Resource filter (exact match)
+          in: query
+          name: resource
+          schema:
+            type: string
+        - description: Action filter (exact match)
+          in: query
+          name: action
+          schema:
+            type: string
+        - description: Operation id filter
+          in: query
+          name: operation_id
+          schema:
+            type: string
+        - description: Event id filter
+          in: query
+          name: event_id
+          schema:
+            type: string
+        - description: Document id filter
+          in: query
+          name: document_id
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  #/components/schemas/types.DataQueryResponse-dto_AuditEventItem
+        '400':
+          description: Bad query parameters
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+        '500':
+          description: Failed to list audit events
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+      security:
+        - BearerAuth: []
+      summary: List audit events (global)
+      tags:
+        - audit-events
+  /api/v1/balances/history:
+    servers:
+      - url: /
+    get:
+      description: >-
+        Paginated balance snapshots for a given period. Defaults to today when
+        no query is supplied. Period must not exceed 30 days.
+      parameters:
+        - description: Start date (inclusive) YYYY-MM-DD
+          example: '2026-04-01'
+          in: query
+          name: from
+          schema:
+            type: string
+        - description: End date (inclusive) YYYY-MM-DD
+          example: '2026-04-30'
+          in: query
+          name: to
+          schema:
+            type: string
+        - description: 1-indexed page number (default 1)
+          in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+        - description: Page size (default 3000)
+          in: query
+          name: per_page
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  #/components/schemas/types.DataQueryResponse-dto_BalanceSnapshotResponse
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+        '422':
+          description: Unprocessable
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+        '500':
+          description: Internal error
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+      security:
+        - BearerAuth: []
+      summary: List balance history
+      tags:
+        - balances
+  /api/v1/balances/latest:
+    servers:
+      - url: /
+    get:
+      description: >-
+        Returns the most recent balance snapshot plus the projected balance and
+        delta computed from STR reserve movements since the snapshot.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/str.balanceLatestResponse'
+        '404':
+          description: No balance snapshot found
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+        '500':
+          description: Internal error
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+      security:
+        - BearerAuth: []
+      summary: Latest balance snapshot
+      tags:
+        - balances
+  /api/v1/certificates:
+    servers:
+      - url: /
+    get:
+      deprecated: true
+      description: Deprecated alias. Use /api/v1/admin/certificates.
+      parameters:
+        - description: 1-indexed page (default 1)
+          in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+        - description: Page size (default 25, max 100)
+          in: query
+          name: perPage
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+        - description: Column to sort by (requires order)
+          in: query
+          name: sortBy
+          schema:
+            type: string
+        - description: Sort order
+          in: query
+          name: order
+          schema:
+            type: string
+            enum:
+              - asc
+              - desc
+      responses:
+        '200':
+          description: OK
+          headers:
+            Deprecation:
+              description: Always true on deprecated legacy routes.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  #/components/schemas/types.DataQueryResponse-dto_CertificateListItem
+        '400':
+          description: Bad query parameters
+          headers:
+            Deprecation:
+              description: Always true on deprecated legacy routes.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+        '500':
+          description: Failed to list certificates
+          headers:
+            Deprecation:
+              description: Always true on deprecated legacy routes.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+      security:
+        - BearerAuth: []
+      summary: List certificates
+      tags:
+        - certificates
+  /api/v1/certificates/{id}:
+    servers:
+      - url: /
+    get:
+      deprecated: true
+      description: Deprecated alias. Use /api/v1/admin/certificates/{id}.
+      parameters:
+        - description: Certificate ID
+          in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: OK
+          headers:
+            Deprecation:
+              description: Always true on deprecated legacy routes.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/dto.CertificateListItem'
+        '400':
+          description: Invalid certificate id
+          headers:
+            Deprecation:
+              description: Always true on deprecated legacy routes.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+        '404':
+          description: Certificate not found
+          headers:
+            Deprecation:
+              description: Always true on deprecated legacy routes.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+        '500':
+          description: Failed to retrieve certificate
+          headers:
+            Deprecation:
+              description: Always true on deprecated legacy routes.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+      security:
+        - BearerAuth: []
+      summary: Get certificate
+      tags:
+        - certificates
+  /api/v1/certificates/private-key:
+    servers:
+      - url: /
+    post:
+      deprecated: true
+      description: Deprecated alias. Use /api/v1/admin/certificates/private-key.
+      requestBody:
+        $ref: '#/components/requestBodies/postApiV1AdminCertificatesPrivateKey'
+      responses:
+        '201':
+          description: Certificate created
+          headers:
+            Deprecation:
+              description: Always true on deprecated legacy routes.
+              schema:
+                type: string
+        '400':
+          description: Invalid form data
+          headers:
+            Deprecation:
+              description: Always true on deprecated legacy routes.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+        '415':
+          description: Unsupported Media Type
+          headers:
+            Deprecation:
+              description: Always true on deprecated legacy routes.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+        '500':
+          description: Failed to create certificate
+          headers:
+            Deprecation:
+              description: Always true on deprecated legacy routes.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+      security:
+        - BearerAuth: []
+      summary: Upload participant private key
+      tags:
+        - certificates
+  /api/v1/certificates/public-key:
+    servers:
+      - url: /
+    post:
+      deprecated: true
+      description: Deprecated alias. Use /api/v1/admin/certificates/public-key.
+      requestBody:
+        $ref: '#/components/requestBodies/postApiV1AdminCertificatesPublicKey'
+      responses:
+        '201':
+          description: Certificate created (no content)
+          headers:
+            Deprecation:
+              description: Always true on deprecated legacy routes.
+              schema:
+                type: string
+        '400':
+          description: Invalid form data
+          headers:
+            Deprecation:
+              description: Always true on deprecated legacy routes.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+        '415':
+          description: Unsupported Media Type
+          headers:
+            Deprecation:
+              description: Always true on deprecated legacy routes.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+        '500':
+          description: Failed to create certificate
+          headers:
+            Deprecation:
+              description: Always true on deprecated legacy routes.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+      security:
+        - BearerAuth: []
+      summary: Upload participant public key
+      tags:
+        - certificates
+  /api/v1/files:
+    servers:
+      - url: /
+    get:
+      description: >-
+        Paginated list of stored file metadata (bucket / S3 key are never
+        exposed). Supports period filtering via from/to (YYYY-MM-DD, max 31
+        days) and the shared queryFilter[i][...] protocol.
+      parameters:
+        - description: 1-indexed page (default 1)
+          in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+        - description: Page size (default 25, max 100)
+          in: query
+          name: perPage
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+        - description: Start date YYYY-MM-DD
+          in: query
+          name: from
+          schema:
+            type: string
+        - description: End date YYYY-MM-DD
+          in: query
+          name: to
+          schema:
+            type: string
+        - description: Column to sort by (requires order)
+          in: query
+          name: sortBy
+          schema:
+            type: string
+        - description: Sort order
+          in: query
+          name: order
+          schema:
+            type: string
+            enum:
+              - asc
+              - desc
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/types.DataQueryResponse-dto_File'
+        '400':
+          description: Bad query parameters
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+        '500':
+          description: Failed to list files
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+      security:
+        - BearerAuth: []
+      summary: List files
+      tags:
+        - files
+  /api/v1/files/{id}/download:
+    servers:
+      - url: /
+    get:
+      description: >-
+        Streams the file's binary content as an attachment (no presigned URL is
+        exposed).
+      parameters:
+        - description: File ID
+          in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: File content stream
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '400':
+          description: Invalid file id
+          content:
+            application/octet-stream:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+        '404':
+          description: File not found
+          content:
+            application/octet-stream:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+        '500':
+          description: Failed to download file
+          content:
+            application/octet-stream:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+        '503':
+          description: Files storage not configured
+          content:
+            application/octet-stream:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+      security:
+        - BearerAuth: []
+      summary: Download file
+      tags:
+        - files
+  /api/v1/operations:
+    servers:
+      - url: /
+    get:
+      description: >-
+        Paginated list of operations with the standard query-filter protocol
+        (same as /transactions).
+      parameters:
+        - description: 1-indexed page (default 1)
+          in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+        - description: Page size (default 25, max 100)
+          in: query
+          name: perPage
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+        - description: Column to sort by (requires order)
+          in: query
+          name: sortBy
+          schema:
+            type: string
+        - description: Sort order
+          in: query
+          name: order
+          schema:
+            type: string
+            enum:
+              - asc
+              - desc
+        - description: Raw filter expression (advanced)
+          in: query
+          name: filter
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  #/components/schemas/types.DataQueryResponse-github_com_onz-software_onz-spb_internal_adapters_api_handlers_operation_dto_Operation
+        '400':
+          description: Bad query parameters
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+        '500':
+          description: Failed to list operations
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+      security:
+        - BearerAuth: []
+      summary: List operations
+      tags:
+        - operations
+    post:
+      description: >-
+        Post a raw SPB XML event (SISMSG envelope). The event type is inferred
+        from the body. Signature + idempotency enforced via headers.
+      parameters:
+        - description: Idempotency key
+          in: header
+          name: X-Idempotency-Key
+          required: true
+          schema:
+            type: string
+        - description: SPB message type
+          in: header
+          name: X-Message-Type
+          required: true
+          schema:
+            type: string
+        - description: >-
+            Recipient ISPB (required for events that address a specific
+            participant)
+          in: header
+          name: X-Recipient
+          schema:
+            type: string
+        - description: Override operation domain (optional)
+          in: header
+          name: X-Domain
+          schema:
+            type: string
+        - description: Wait for response up to N seconds; 0 for fire-and-forget (default 0)
+          in: header
+          name: X-Request-Timeout
+          schema:
+            type: integer
+      requestBody:
+        $ref: '#/components/requestBodies/Payload'
+      responses:
+        '200':
+          description: Operation reached a terminal state within the timeout
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  #/components/schemas/github_com_onz-software_onz-spb_internal_adapters_api_handlers_operation_dto.Operation
+        '201':
+          description: Operation accepted (async)
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  #/components/schemas/github_com_onz-software_onz-spb_internal_adapters_api_handlers_operation_dto.Operation
+        '206':
+          description: Operation accepted, timeout hit before terminal state
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  #/components/schemas/github_com_onz-software_onz-spb_internal_adapters_api_handlers_operation_dto.Operation
+        '400':
+          description: Bad request / validation error
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+        '409':
+          description: Idempotency conflict
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+        '500':
+          description: Internal error
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+      security:
+        - BearerAuth: []
+      summary: Create operation (raw XML)
+      tags:
+        - operations
+  /api/v1/operations/{event_type}:
+    servers:
+      - url: /
+    post:
+      description: >-
+        Post a typed payload (JSON or proprietary format) for the given
+        event_type. The registry converts it to canonical SPB XML before
+        processing.
+      parameters:
+        - description: Event type (e.g. SLB0001, STR0003)
+          in: path
+          name: event_type
+          required: true
+          schema:
+            type: string
+        - description: Idempotency key
+          in: header
+          name: X-Idempotency-Key
+          required: true
+          schema:
+            type: string
+        - description: SPB message type
+          in: header
+          name: X-Message-Type
+          required: true
+          schema:
+            type: string
+        - description: Recipient ISPB (when applicable)
+          in: header
+          name: X-Recipient
+          schema:
+            type: string
+        - description: Override operation domain (optional)
+          in: header
+          name: X-Domain
+          schema:
+            type: string
+        - description: Wait for response up to N seconds (default 0)
+          in: header
+          name: X-Request-Timeout
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+          application/xml:
+            schema:
+              type: object
+        description: Mapped payload (JSON or XML)
+        required: true
+      responses:
+        '200':
+          description: Operation reached a terminal state within the timeout
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  #/components/schemas/github_com_onz-software_onz-spb_internal_adapters_api_handlers_operation_dto.Operation
+        '201':
+          description: Operation accepted (async)
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  #/components/schemas/github_com_onz-software_onz-spb_internal_adapters_api_handlers_operation_dto.Operation
+        '206':
+          description: Operation accepted, timeout hit before terminal state
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  #/components/schemas/github_com_onz-software_onz-spb_internal_adapters_api_handlers_operation_dto.Operation
+        '400':
+          description: Bad request / validation error
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+        '409':
+          description: Idempotency conflict
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+        '500':
+          description: Internal error
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+      security:
+        - BearerAuth: []
+      summary: Create operation (mapped payload)
+      tags:
+        - operations
+  /api/v1/operations/{event_type}/generate:
+    servers:
+      - url: /
+    post:
+      description: >-
+        Convert a mapped payload (JSON or proprietary format) for the given
+        event_type into canonical SPB XML, without dispatching.
+      parameters:
+        - description: Event type (e.g. SLB0001, STR0003)
+          in: path
+          name: event_type
+          required: true
+          schema:
+            type: string
+        - description: SPB message type
+          in: header
+          name: X-Message-Type
+          required: true
+          schema:
+            type: string
+        - description: Recipient ISPB (when applicable)
+          in: header
+          name: X-Recipient
+          schema:
+            type: string
+        - description: Override operation domain (optional)
+          in: header
+          name: X-Domain
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: string
+          application/xml:
+            schema:
+              type: string
+        description: Mapped payload (JSON serialized or raw XML)
+        required: true
+      responses:
+        '200':
+          description: Canonical SPB XML
+          content:
+            application/xml:
+              schema:
+                type: string
+        '400':
+          description: Bad request / validation error
+          content:
+            application/xml:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+        '500':
+          description: Internal error
+          content:
+            application/xml:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+      security:
+        - BearerAuth: []
+      summary: Preview operation XML (mapped)
+      tags:
+        - operations
+  /api/v1/operations/{operation_id}:
+    servers:
+      - url: /
+    get:
+      description: Return the full operation detail (including its events) by ID.
+      parameters:
+        - description: Operation ID
+          in: path
+          name: operation_id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  #/components/schemas/github_com_onz-software_onz-spb_internal_adapters_api_handlers_operation_dto.Operation
+        '400':
+          description: Invalid id
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+        '500':
+          description: Internal error
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+      security:
+        - BearerAuth: []
+      summary: Get operation
+      tags:
+        - operations
+  /api/v1/operations/{operation_id}/approve:
+    servers:
+      - url: /
+    post:
+      description: >-
+        Approve an operation currently in `pending_approval` (moves it back into
+        processing).
+      parameters:
+        - description: Operation ID
+          in: path
+          name: operation_id
+          required: true
+          schema:
+            type: string
+        - description: Operation domain (required by domain middleware)
+          in: header
+          name: X-Domain
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  #/components/schemas/github_com_onz-software_onz-spb_internal_adapters_api_handlers_operation_dto.Operation
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+        '409':
+          description: Invalid state transition
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+        '500':
+          description: Internal error
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+      security:
+        - BearerAuth: []
+      summary: Approve operation
+      tags:
+        - operations
+  /api/v1/operations/{operation_id}/audit-events:
+    servers:
+      - url: /
+    get:
+      description: >-
+        Paginated audit-log entries scoped to a single operation, with the same
+        query-filter protocol used by /transactions.
+      parameters:
+        - description: Operation ID
+          in: path
+          name: operation_id
+          required: true
+          schema:
+            type: string
+        - description: Event ID filter
+          in: query
+          name: event_id
+          schema:
+            type: string
+        - description: 1-indexed page (default 1)
+          in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+        - description: Page size (default 20, max 100)
+          in: query
+          name: perPage
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+        - description: Sort column
+          in: query
+          name: sortBy
+          schema:
+            type: string
+            enum:
+              - occurred_at
+        - description: Sort order
+          in: query
+          name: order
+          schema:
+            type: string
+            enum:
+              - asc
+              - desc
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  #/components/schemas/types.DataQueryResponse-dto_AuditEventItem
+        '400':
+          description: Bad query parameters
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+        '404':
+          description: Operation not found
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+        '500':
+          description: Failed to list audit events
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+      security:
+        - BearerAuth: []
+      summary: List audit events for an operation
+      tags:
+        - audit-events
+        - operations
+  /api/v1/operations/{operation_id}/events:
+    servers:
+      - url: /
+    get:
+      description: >-
+        Paginated list of events associated with an operation (operation_id OR
+        original_operation_id match).
+      parameters:
+        - description: Operation ID
+          in: path
+          name: operation_id
+          required: true
+          schema:
+            type: string
+        - description: 1-indexed page (default 1)
+          in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+        - description: Page size (default 2)
+          in: query
+          name: perPage
+          schema:
+            type: integer
+            minimum: 1
+        - description: Column to sort by (requires order)
+          in: query
+          name: sortBy
+          schema:
+            type: string
+        - description: Sort order
+          in: query
+          name: order
+          schema:
+            type: string
+            enum:
+              - asc
+              - desc
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  #/components/schemas/types.DataQueryResponse-github_com_onz-software_onz-spb_internal_adapters_api_handlers_operation_dto_Event
+        '400':
+          description: Bad query parameters
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+        '500':
+          description: Failed to list events
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+      security:
+        - BearerAuth: []
+      summary: List events for an operation
+      tags:
+        - events
+        - operations
+  /api/v1/operations/{operation_id}/events/{event_id}:
+    servers:
+      - url: /
+    get:
+      description: Return a single event detail for the given operation/event pair.
+      parameters:
+        - description: Operation ID
+          in: path
+          name: operation_id
+          required: true
+          schema:
+            type: string
+        - description: Event ID
+          in: path
+          name: event_id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  #/components/schemas/github_com_onz-software_onz-spb_internal_adapters_api_handlers_operation_dto.Event
+        '400':
+          description: Invalid id
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+        '500':
+          description: Failed to get event
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+      security:
+        - BearerAuth: []
+      summary: Get event
+      tags:
+        - events
+        - operations
+  /api/v1/operations/{operation_id}/events/{event_id}/document:
+    servers:
+      - url: /
+    get:
+      description: >-
+        Return the decrypted XML document associated with an event (the SPB
+        message payload).
+      parameters:
+        - description: Operation ID
+          in: path
+          name: operation_id
+          required: true
+          schema:
+            type: string
+        - description: Event ID
+          in: path
+          name: event_id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: XML document
+          content:
+            application/xml:
+              schema:
+                type: string
+        '400':
+          description: Invalid id
+          content:
+            application/xml:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+        '500':
+          description: Failed to get document
+          content:
+            application/xml:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+      security:
+        - BearerAuth: []
+      summary: Get event XML document
+      tags:
+        - events
+        - operations
+  /api/v1/operations/{operation_id}/events/{event_id}/requeue:
+    servers:
+      - url: /
+    post:
+      deprecated: true
+      description: >-
+        Deprecated alias. Use
+        /api/v1/admin/operations/{operation_id}/events/{event_id}/requeue.
+      parameters:
+        - description: Operation ID
+          in: path
+          name: operation_id
+          required: true
+          schema:
+            type: string
+        - description: Event ID
+          in: path
+          name: event_id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: OK
+          headers:
+            Deprecation:
+              description: Always true on deprecated legacy routes.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  #/components/schemas/github_com_onz-software_onz-spb_internal_adapters_api_handlers_operation_dto.Operation
+        '400':
+          description: Invalid id
+          headers:
+            Deprecation:
+              description: Always true on deprecated legacy routes.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+        '500':
+          description: Failed to requeue
+          headers:
+            Deprecation:
+              description: Always true on deprecated legacy routes.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+      security:
+        - BearerAuth: []
+      summary: Requeue event
+      tags:
+        - events
+  /api/v1/operations/{operation_id}/reject:
+    servers:
+      - url: /
+    post:
+      description: >-
+        Reject an operation currently in `pending_approval`. Terminal
+        transition.
+      parameters:
+        - description: Operation ID
+          in: path
+          name: operation_id
+          required: true
+          schema:
+            type: string
+        - description: Operation domain (required by domain middleware)
+          in: header
+          name: X-Domain
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  #/components/schemas/github_com_onz-software_onz-spb_internal_adapters_api_handlers_operation_dto.Operation
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+        '409':
+          description: Invalid state transition
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+        '500':
+          description: Internal error
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+      security:
+        - BearerAuth: []
+      summary: Reject operation
+      tags:
+        - operations
+  /api/v1/operations/{operation_id}/reply/SLB0002:
+    servers:
+      - url: /
+    post:
+      description: >-
+        Send the SLB0002 acknowledgement for a previously received operation
+        back to BACEN.
+      parameters:
+        - description: Operation ID
+          in: path
+          name: operation_id
+          required: true
+          schema:
+            type: string
+        - description: Idempotency key
+          in: header
+          name: X-Idempotency-Key
+          required: true
+          schema:
+            type: string
+        - description: SPB message type
+          in: header
+          name: X-Message-Type
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Ack accepted (no content)
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+        '500':
+          description: Failed to send ack
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+      security:
+        - BearerAuth: []
+      summary: Acknowledge operation (SLB0002)
+      tags:
+        - operations
+  /api/v1/operations/{operation_id}/response:
+    servers:
+      - url: /
+    post:
+      description: >-
+        Post the response XML for an in-flight operation (follow-up message such
+        as STR0003 reply, LDL retorno, etc.).
+      parameters:
+        - description: Operation ID
+          in: path
+          name: operation_id
+          required: true
+          schema:
+            type: string
+        - description: Idempotency key
+          in: header
+          name: X-Idempotency-Key
+          required: true
+          schema:
+            type: string
+        - description: SPB message type
+          in: header
+          name: X-Message-Type
+          required: true
+          schema:
+            type: string
+        - description: Operation domain
+          in: header
+          name: X-Domain
+          required: true
+          schema:
+            type: string
+        - description: Recipient ISPB (when applicable)
+          in: header
+          name: X-Recipient
+          schema:
+            type: string
+      requestBody:
+        $ref: '#/components/requestBodies/Payload'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  #/components/schemas/github_com_onz-software_onz-spb_internal_adapters_api_handlers_operation_dto.Operation
+        '400':
+          description: Bad request / validation error
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+        '500':
+          description: Internal error
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+      security:
+        - BearerAuth: []
+      summary: Respond to operation (raw XML)
+      tags:
+        - operations
+  /api/v1/operations/analytics:
+    servers:
+      - url: /
+    get:
+      description: >-
+        Aggregated analytics across operations / balances / statements /
+        transactions for the requested period. Defaults to today when no query
+        is supplied. Period must not exceed 30 days.
+      parameters:
+        - description: Start date YYYY-MM-DD
+          example: '2026-04-01'
+          in: query
+          name: from
+          schema:
+            type: string
+        - description: End date YYYY-MM-DD
+          example: '2026-04-30'
+          in: query
+          name: to
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/analytics.AnalyticsResponse'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+        '422':
+          description: Unprocessable
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+        '500':
+          description: Internal error
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+      security:
+        - BearerAuth: []
+      summary: Operations analytics
+      tags:
+        - operations
+  /api/v1/operations/by-idempotency-key/{idempotency_key}:
+    servers:
+      - url: /
+    get:
+      description: Return the operation tied to a given idempotency key (max 36 chars).
+      parameters:
+        - description: Idempotency key (max 36)
+          in: path
+          name: idempotency_key
+          required: true
+          schema:
+            type: string
+            maxLength: 36
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  #/components/schemas/github_com_onz-software_onz-spb_internal_adapters_api_handlers_operation_dto.Operation
+        '400':
+          description: Invalid key
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+        '500':
+          description: Internal error
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+      security:
+        - BearerAuth: []
+      summary: Get operation by idempotency key
+      tags:
+        - operations
+  /api/v1/operations/generate:
+    servers:
+      - url: /
+    post:
+      description: >-
+        Take a raw SPB XML body, validate it and return the canonical document
+        that would be sent — without actually dispatching it. Useful for
+        debugging / tooling.
+      parameters:
+        - description: SPB message type
+          in: header
+          name: X-Message-Type
+          required: true
+          schema:
+            type: string
+        - description: Recipient ISPB (when applicable)
+          in: header
+          name: X-Recipient
+          schema:
+            type: string
+        - description: Override operation domain (optional)
+          in: header
+          name: X-Domain
+          schema:
+            type: string
+      requestBody:
+        $ref: '#/components/requestBodies/Payload'
+      responses:
+        '200':
+          description: Canonical SPB XML
+          content:
+            application/xml:
+              schema:
+                type: string
+        '400':
+          description: Bad request / validation error
+          content:
+            application/xml:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+        '500':
+          description: Internal error
+          content:
+            application/xml:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+      security:
+        - BearerAuth: []
+      summary: Preview operation XML (raw)
+      tags:
+        - operations
+  /api/v1/participants:
+    servers:
+      - url: /
+    get:
+      description: >-
+        Read-only paginated list of the participant catalog. Supports a
+        quick-search `filter`, AIP-157 partial responses via `fields`, and the
+        shared queryFilter[i][...] protocol (mutually exclusive with `filter`).
+      parameters:
+        - description: 1-indexed page (default 1)
+          in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+        - description: Page size (default 25, max 100)
+          in: query
+          name: perPage
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+        - description: Quick search across ispb / short_name
+          in: query
+          name: filter
+          schema:
+            type: string
+        - description: Comma-separated field selection (partial response)
+          in: query
+          name: fields
+          schema:
+            type: string
+        - description: Column to sort by (requires order)
+          in: query
+          name: sortBy
+          schema:
+            type: string
+        - description: Sort order
+          in: query
+          name: order
+          schema:
+            type: string
+            enum:
+              - asc
+              - desc
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/types.DataQueryResponse-dto_Participant'
+        '400':
+          description: Bad query parameters
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+        '500':
+          description: Failed to list participants
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+      security:
+        - BearerAuth: []
+      summary: List participants
+      tags:
+        - participants
+  /api/v1/statements:
+    servers:
+      - url: /
+    get:
+      description: >-
+        Paginated list of institution statements, with optional period and
+        filter support (same protocol as /transactions).
+      parameters:
+        - description: 1-indexed page (default 1)
+          in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+        - description: Page size (default 25, max 100)
+          in: query
+          name: perPage
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+        - description: Start date YYYY-MM-DD
+          in: query
+          name: from
+          schema:
+            type: string
+        - description: End date YYYY-MM-DD
+          in: query
+          name: to
+          schema:
+            type: string
+        - description: Column to sort by (requires order)
+          in: query
+          name: sortBy
+          schema:
+            type: string
+        - description: Sort order
+          in: query
+          name: order
+          schema:
+            type: string
+            enum:
+              - asc
+              - desc
+        - description: Raw filter expression (advanced)
+          in: query
+          name: filter
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/types.DataQueryResponse-dto_Statement'
+        '400':
+          description: Bad query parameters
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+        '500':
+          description: Failed to list statements
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+      security:
+        - BearerAuth: []
+      summary: List statements
+      tags:
+        - statements
+  /api/v1/statements/{id}:
+    servers:
+      - url: /
+    get:
+      description: Return the full statement detail (including all entries) by ID.
+      parameters:
+        - description: Statement ID
+          in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/dto.StatementDetail'
+        '400':
+          description: Invalid ID
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+        '500':
+          description: Failed to retrieve statement
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+      security:
+        - BearerAuth: []
+      summary: Get statement
+      tags:
+        - statements
+  /api/v1/str/status:
+    servers:
+      - url: /
+    get:
+      description: >-
+        Returns BACEN STR window status (open/closed) and the current day's
+        working hours.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/dto.GetWorkHoursResponse'
+        '500':
+          description: Internal error
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+      security:
+        - BearerAuth: []
+      summary: STR work hours / status
+      tags:
+        - str
+  /api/v1/transactions:
+    servers:
+      - url: /
+    get:
+      description: >-
+        Paginated list of transactions with rich query-filter support. See
+        project docs for the `queryFilter[i][column|operation|value|valueArray]`
+        protocol.
+      parameters:
+        - description: 1-indexed page (default 1)
+          in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+        - description: Page size (default 25, max 100)
+          in: query
+          name: perPage
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+        - description: Column to sort by (requires order)
+          in: query
+          name: sortBy
+          schema:
+            type: string
+        - description: Sort order
+          in: query
+          name: order
+          schema:
+            type: string
+            enum:
+              - asc
+              - desc
+        - description: Raw filter expression (advanced)
+          in: query
+          name: filter
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/types.DataQueryResponse-dto_Transaction'
+        '400':
+          description: Bad query parameters
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+        '500':
+          description: Failed to list transactions
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+      security:
+        - BearerAuth: []
+      summary: List transactions
+      tags:
+        - transactions
+  /api/v1/transactions/{id}:
+    servers:
+      - url: /
+    get:
+      description: Return the complete transaction detail by ID.
+      parameters:
+        - description: Transaction ID
+          in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/dto.CompleteTransaction'
+        '400':
+          description: Invalid ID
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+        '500':
+          description: Failed to get transaction
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+      security:
+        - BearerAuth: []
+      summary: Get transaction
+      tags:
+        - transactions
+  /api/v1/transactions/{id}/receipt:
+    servers:
+      - url: /
+    get:
+      description: Generate and return a PDF receipt for the given transaction.
+      parameters:
+        - description: Transaction ID
+          in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: PDF receipt
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        '400':
+          description: Invalid ID
+          content:
+            application/pdf:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+        '404':
+          description: Not found
+          content:
+            application/pdf:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+        '500':
+          description: Failed to generate receipt
+          content:
+            application/pdf:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+      security:
+        - BearerAuth: []
+      summary: Generate transaction receipt (PDF)
+      tags:
+        - transactions
+  /api/v1/transactions/export:
+    servers:
+      - url: /
+    get:
+      description: >-
+        Streams a single page of STR transactions matching the query filters as
+        a `;`-delimited CSV file (UTF-8 BOM). Shares the list endpoint's
+        query/perPage contract — narrow with filters to export a specific
+        subset.
+      parameters:
+        - description: 1-indexed page (default 1)
+          in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+        - description: Page size (default 25)
+          in: query
+          name: perPage
+          schema:
+            type: integer
+            minimum: 1
+        - description: Column to sort by (requires order)
+          in: query
+          name: sortBy
+          schema:
+            type: string
+        - description: Sort order
+          in: query
+          name: order
+          schema:
+            type: string
+            enum:
+              - asc
+              - desc
+        - description: Raw filter expression (advanced)
+          in: query
+          name: filter
+          schema:
+            type: string
+      responses:
+        '200':
+          description: CSV file
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
+        '400':
+          description: Bad query parameters
+          content:
+            text/csv:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+        '500':
+          description: Failed to export transactions
+          content:
+            text/csv:
+              schema:
+                additionalProperties:
+                  type: string
+                type: object
+      security:
+        - BearerAuth: []
+      summary: Export transactions (CSV)
+      tags:
+        - transactions
+  /health/live:
+    servers:
+      - url: /
+    get:
+      description: Returns 200 when the process is up. Does not check dependencies.
+      responses:
+        '200':
+          description: OK (no content)
+      summary: Liveness probe (SPB API)
+      tags:
+        - health
+  /health/ready:
+    servers:
+      - url: /
+    get:
+      description: >-
+        Probes PostgreSQL, RabbitMQ, and every configured IBM MQ queue manager.
+        Returns 200 with per-dependency status when ready, 503 otherwise. Also
+        updates DB connection pool gauges.
+      responses:
+        '200':
+          description: ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/health.readyResponse'
+        '503':
+          description: not ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/health.readyResponse'
+      summary: Readiness probe (SPB API)
+      tags:
+        - health
+  /version:
+    servers:
+      - url: /
+    get:
+      description: >-
+        Returns the build version tag and commit SHA baked into the binary at
+        build time.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/version.VersionResponse'
+      summary: Build version
+      tags:
+        - version
+  /longpolling/v1/health/live:
+    servers: []
+    get:
+      summary: Liveness probe (Long Polling)
+      tags:
+        - health
+      description: Returns `OK` when the process is up. No dependencies checked.
+      security: []
+      responses:
+        '200':
+          description: Always the literal string `OK`.
+          content:
+            application/json:
+              schema:
+                type: string
+                enum:
+                  - OK
+                description: Always the literal string `OK`.
+  /longpolling/v1/messages/{pullNext}:
+    servers: []
+    get:
+      summary: Pull the next SPB message
+      tags:
+        - longpolling
+      description: >-
+        Long-polling endpoint. The first call MUST use `pullNext=start`;
+        subsequent calls reuse the value returned in the `onz-pull-next`
+        response header. The connection is held for up to ~5s waiting for a new
+        message.
+
+
+        **200 body** is either the next message envelope (see the `LpMessage`
+        schema) or an empty body for bootstrap requests. **204** means the
+        polling window expired. The `onz-pull-next` response header always
+        carries the cursor for the next call.
+
+
+        ```json
+
+        {
+
+
+
+          "id": 1,
+          "operation_id": "op-uuid",
+          "event_type": "response",
+          "message_type": "PACS008",
+          "sender": "12345678",
+          "recipient": "08253539",
+          "plaintext": "<xml/>",
+          "created_at": "2025-01-01T00:00:00Z",
+          "updated_at": "2025-01-01T00:00:00Z"
+        }
+
+        ```
+      parameters:
+        - schema:
+            type: string
+            minLength: 1
+          in: path
+          name: pullNext
+          required: true
+          description: >-
+            `start` to bootstrap a session, otherwise the value of the previous
+            `onz-pull-next` header.
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: >-
+            Either the next SPB message envelope or an empty bootstrap
+            acknowledgement. Inspect `onz-pull-next` for the next cursor.
+          headers:
+            onz-pull-next:
+              schema:
+                type: string
+              description: >-
+                Opaque cursor to pass as `pullNext` on the next call. Always
+                set, even when the response body is empty.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/LpMessage'
+                  - type: object
+                    additionalProperties: false
+                    description: >-
+                      Empty bootstrap acknowledgement returned for
+                      `pullNext=start`. The session is now active; use
+                      `onz-pull-next` for the subsequent poll.
+        '204':
+          description: >-
+            Long-polling window expired without a new message. Reissue the
+            request with the latest `onz-pull-next`.
+          headers:
+            onz-pull-next:
+              schema:
+                type: string
+        '401':
+          description: >-
+            Standard error envelope (matches AppError.toJSON output across
+            services).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  statusCode:
+                    type: integer
+                  message:
+                    type: string
+                required:
+                  - error
+                  - statusCode
+                  - message
+                additionalProperties: true
+                description: >-
+                  Standard error envelope (matches AppError.toJSON output across
+                  services).
+        '500':
+          description: >-
+            Standard error envelope (matches AppError.toJSON output across
+            services).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  statusCode:
+                    type: integer
+                  message:
+                    type: string
+                required:
+                  - error
+                  - statusCode
+                  - message
+                additionalProperties: true
+                description: >-
+                  Standard error envelope (matches AppError.toJSON output across
+                  services).
+  /longpolling/v1/consumers/{ispb}/{action}:
+    servers: []
+    post:
+      summary: Start or cancel an ISPB consumer
+      tags:
+        - consumers
+      description: >-
+        Internal consumer management endpoint used by ops tooling to start or
+        cancel the RabbitMQ consumer bound to a participant queue.
+      parameters:
+        - schema:
+            type: string
+            enum:
+              - start
+              - cancel
+          in: path
+          name: action
+          required: true
+        - schema:
+            type: string
+            minLength: 4
+            maxLength: 8
+          in: path
+          name: ispb
+          required: true
+          description: Participant ISPB (4-8 char identifier).
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Consumer transition acknowledged.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                required:
+                  - message
+                additionalProperties: false
+                description: Consumer transition acknowledged.
+        '422':
+          description: Consumer not found for the given ISPB.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  statusCode:
+                    type: integer
+                  message:
+                    type: string
+                required:
+                  - error
+                  - statusCode
+                  - message
+                additionalProperties: true
+                description: Consumer not found for the given ISPB.
+components:
+  requestBodies:
+    postApiV1AdminCertificatesPublicKey:
+      content:
+        multipart/form-data:
+          schema:
+            type: object
+            properties:
+              ispb:
+                description: Participant ISPB (8 digits)
+                example: '12345678'
+                type: string
+              certifier:
+                description: Certificate authority id
+                type: string
+              asymmetric_key_algorithm:
+                description: Asymmetric key algorithm (e.g. RSA, ECDSA)
+                type: string
+              certificate:
+                description: PEM-encoded public key file
+                type: string
+                format: binary
+            required:
+              - ispb
+              - certifier
+              - certificate
+      required: true
+    postApiV1AdminCertificatesPrivateKey:
+      content:
+        multipart/form-data:
+          schema:
+            type: object
+            properties:
+              ispb:
+                description: Participant ISPB (8 digits)
+                example: '12345678'
+                type: string
+              certificate:
+                description: PEM-encoded private key file
+                type: string
+                format: binary
+            required:
+              - ispb
+              - certificate
+      required: true
+    systemconfig.CreateSystemConfigRequest:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/systemconfig.CreateSystemConfigRequest'
+      description: System config payload
+      required: true
+    systemconfig.UpdateSystemConfigRequest:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/systemconfig.UpdateSystemConfigRequest'
+      description: New value
+      required: true
+    Payload:
+      content:
+        application/xml:
+          schema:
+            type: string
+      description: Raw SPB SISMSG XML
+      required: true
+  securitySchemes:
+    BearerAuth:
+      description: Bearer <JWT>
+      in: header
+      name: Authorization
+      type: apiKey
+  schemas:
+    analytics.AnalyticsResponse:
+      properties:
+        balances:
+          $ref: '#/components/schemas/analytics.BalanceMetrics'
+        operations:
+          $ref: '#/components/schemas/analytics.OperationMetrics'
+        period:
+          $ref: '#/components/schemas/analytics.PeriodMetadata'
+        statements:
+          $ref: '#/components/schemas/analytics.StatementMetrics'
+        transactions:
+          $ref: '#/components/schemas/analytics.TransactionMetrics'
+      type: object
+    analytics.BalanceMetrics:
+      properties:
+        totals:
+          additionalProperties:
+            format: int64
+            type: integer
+          type: object
+      type: object
+    analytics.CountByType:
+      properties:
+        count:
+          type: integer
+        type:
+          type: string
+      type: object
+    analytics.OperationMetrics:
+      properties:
+        by_event_type:
+          items:
+            $ref: '#/components/schemas/analytics.CountByType'
+          type: array
+        by_operation_type:
+          items:
+            $ref: '#/components/schemas/analytics.CountByType'
+          type: array
+        totals:
+          $ref: '#/components/schemas/analytics.OperationTotals'
+      type: object
+    analytics.OperationTotals:
+      properties:
+        canceled:
+          type: integer
+        failed:
+          type: integer
+        pending_approval:
+          type: integer
+        successful:
+          type: integer
+        total_operations:
+          type: integer
+        waiting_bacen:
+          type: integer
+      type: object
+    analytics.PeriodMetadata:
+      properties:
+        end:
+          type: string
+        start:
+          type: string
+      type: object
+    analytics.StatementMetrics:
+      properties:
+        totals:
+          additionalProperties:
+            format: int64
+            type: integer
+          type: object
+      type: object
+    analytics.TransactionMetrics:
+      properties:
+        totals:
+          additionalProperties:
+            format: int64
+            type: integer
+          type: object
+      type: object
+    domain.WebhookEventType:
+      enum:
+        - all
+      type: string
+      x-enum-varnames:
+        - WebhookEventTypeAll
+    domain.WebhookStatus:
+      enum:
+        - active
+        - inactive
+      type: string
+      x-enum-varnames:
+        - WebhookStatusActive
+        - WebhookStatusInactive
+    domain.WorkHoursStatus:
+      enum:
+        - open
+        - close
+      type: string
+      x-enum-varnames:
+        - WorkHoursStatusOpen
+        - WorkHoursStatusClose
+    dto.AuditEventItem:
+      properties:
+        action:
+          type: string
+        actor:
+          type: string
+        client_name:
+          type: string
+        correlation_id:
+          type: string
+        email:
+          type: string
+        id:
+          type: integer
+        metadata:
+          additionalProperties: {}
+          type: object
+        occurred_at:
+          type: string
+        outcome:
+          type: string
+        request_id:
+          type: string
+        resource:
+          type: string
+      type: object
+    dto.BalanceSnapshotResponse:
+      properties:
+        bacen_date:
+          type: string
+        bacen_time:
+          type: string
+        balance:
+          type: number
+        created_at:
+          type: string
+        id:
+          type: integer
+        movement_date:
+          type: string
+        operation_id:
+          type: string
+        projected_balance:
+          type: number
+        projection_delta:
+          type: number
+      type: object
+    dto.CertificateListItem:
+      properties:
+        asymmetric_key_algorithm:
+          type: string
+        certificate_type:
+          type: string
+        certifier:
+          type: string
+        created_at:
+          type: string
+        days_until_expiry:
+          type: integer
+        hash:
+          type: string
+        id:
+          type: integer
+        ispb:
+          type: string
+        valid_not_after:
+          type: string
+        valid_not_before:
+          type: string
+        validity_status:
+          type: string
+      type: object
+    dto.CompleteTransaction:
+      properties:
+        amount:
+          type: number
+        content:
+          items:
+            type: integer
+          type: array
+        contract_number:
+          type: string
+        control_number:
+          type: string
+        created_at:
+          type: string
+        description:
+          type: string
+        entry_type:
+          type: string
+        group_event_type:
+          type: string
+        id:
+          type: integer
+        idempotency_key:
+          type: string
+        identifier_code:
+          type: string
+        operation_id:
+          type: string
+        operation_type:
+          type: string
+        priority:
+          type: integer
+        reason:
+          type: integer
+        receiver:
+          $ref: '#/components/schemas/dto.TransactionParty'
+        reference_str_id:
+          type: string
+        schedule_datetime:
+          type: string
+        sender:
+          $ref: '#/components/schemas/dto.TransactionParty'
+        status:
+          type: string
+        status_description:
+          type: string
+        str_id:
+          type: string
+        updated_at:
+          type: string
+      type: object
+    dto.File:
+      properties:
+        checksum:
+          type: string
+        content_type:
+          type: string
+        created_at:
+          type: string
+        file_name:
+          type: string
+        id:
+          type: integer
+        operation_id:
+          type: string
+        size_bytes:
+          type: integer
+        updated_at:
+          type: string
+      type: object
+    dto.GetWorkHoursResponse:
+      properties:
+        closing_time:
+          type: string
+        opening_time:
+          type: string
+        reference_date:
+          type: string
+        status:
+          $ref: '#/components/schemas/domain.WorkHoursStatus'
+      type: object
+    dto.MissingTransactionItem:
+      properties:
+        event_created_at:
+          type: string
+        event_idempotency_key:
+          type: string
+        event_type:
+          type: string
+        operation_id:
+          type: string
+        recipient:
+          type: string
+        sender:
+          type: string
+      type: object
+    dto.Participant:
+      properties:
+        code_number:
+          type: string
+        created_at:
+          type: string
+        full_name:
+          type: string
+        ispb:
+          type: string
+        main_access:
+          type: string
+        operation_start_date:
+          type: string
+        participates_in_compe:
+          type: boolean
+        short_name:
+          type: string
+        updated_at:
+          type: string
+      type: object
+    dto.Statement:
+      properties:
+        bacen_at:
+          type: string
+        created_at:
+          type: string
+        document_id:
+          type: integer
+        event_id:
+          type: integer
+        final_balance:
+          type: string
+        id:
+          type: integer
+        if_at:
+          type: string
+        initial_balance:
+          type: string
+        movement_date:
+          type: string
+        operation_id:
+          type: string
+        sender_ispb:
+          type: string
+      type: object
+    dto.StatementDetail:
+      properties:
+        bacen_at:
+          type: string
+        created_at:
+          type: string
+        document_id:
+          type: integer
+        entries:
+          items:
+            $ref: '#/components/schemas/dto.StatementEntryDetail'
+          type: array
+        event_id:
+          type: integer
+        final_balance:
+          type: string
+        id:
+          type: integer
+        if_at:
+          type: string
+        initial_balance:
+          type: string
+        movement_date:
+          type: string
+        operation_id:
+          type: string
+        sender_ispb:
+          type: string
+      type: object
+    dto.StatementEntryDetail:
+      properties:
+        amount:
+          type: string
+        counterpart_ispb:
+          type: string
+        created_at:
+          type: string
+        entry_type:
+          type: string
+        event_at:
+          type: string
+        id:
+          type: integer
+        origin_control_number:
+          type: string
+        origin_message_code:
+          type: string
+        statement_id:
+          type: integer
+        str_control_number:
+          type: string
+      type: object
+    dto.TimelineItem:
+      properties:
+        created_at:
+          type: string
+        event_id:
+          type: integer
+        event_type:
+          type: string
+        message_type:
+          type: string
+        operation_id:
+          type: string
+      type: object
+    dto.Transaction:
+      properties:
+        amount:
+          type: number
+        created_at:
+          type: string
+        entry_type:
+          type: string
+        group_event_type:
+          type: string
+        id:
+          type: integer
+        operation_id:
+          type: string
+        operation_type:
+          type: string
+        receiver_agency:
+          type: integer
+        receiver_institution:
+          $ref: >-
+            #/components/schemas/github_com_onz-software_onz-spb_internal_adapters_api_handlers_transaction_dto.Institution
+        receiver_ispb:
+          type: string
+        sender_agency:
+          type: integer
+        sender_institution:
+          $ref: >-
+            #/components/schemas/github_com_onz-software_onz-spb_internal_adapters_api_handlers_transaction_dto.Institution
+        sender_ispb:
+          type: string
+        status:
+          type: string
+        str_id:
+          type: string
+        updated_at:
+          type: string
+      type: object
+    dto.TransactionParty:
+      properties:
+        account_number:
+          type: string
+        account_type:
+          type: string
+        agency:
+          type: integer
+        entity_name:
+          type: string
+        entity_number:
+          type: string
+        entity_type:
+          type: string
+        institution:
+          $ref: >-
+            #/components/schemas/github_com_onz-software_onz-spb_internal_adapters_api_handlers_transaction_dto.Institution
+        ispb:
+          type: string
+      type: object
+    event.documentResponse:
+      properties:
+        control_segment:
+          items:
+            type: integer
+          type: array
+        created_at:
+          type: string
+        encrypted:
+          items:
+            type: integer
+          type: array
+        event_id:
+          type: integer
+        id:
+          type: integer
+        plaintext:
+          items:
+            type: integer
+          type: array
+        system_segment:
+          items:
+            type: integer
+          type: array
+        updated_at:
+          type: string
+        url:
+          type: string
+        user_segment:
+          items:
+            type: integer
+          type: array
+      type: object
+    event.enqueueResponse:
+      properties:
+        enqueued:
+          type: integer
+        message:
+          type: string
+      type: object
+    event.eventAdminResponse:
+      properties:
+        created_at:
+          type: string
+        event_type:
+          type: string
+        id:
+          type: integer
+        idempotency_key:
+          type: string
+        message_type:
+          type: string
+        operation_id:
+          type: string
+        original_operation_id:
+          type: string
+        recipient:
+          type: string
+        sender:
+          type: string
+        sent_at:
+          type: string
+        stage:
+          type: string
+        updated_at:
+          type: string
+        viewed:
+          type: boolean
+      type: object
+    event.messageResponse:
+      properties:
+        created_at:
+          type: string
+        event_id:
+          type: integer
+        ibmmq_body:
+          items:
+            type: integer
+          type: array
+        ibmmq_header:
+          additionalProperties: {}
+          type: object
+        id:
+          type: integer
+        updated_at:
+          type: string
+      type: object
+    event.patchEventRequest:
+      properties:
+        stage:
+          type: string
+        viewed:
+          type: boolean
+      type: object
+    event.patchSecurityHeaderRequest:
+      properties:
+        error_code:
+          type: integer
+        hash_algorithm:
+          type: integer
+        special_handling:
+          type: integer
+        symmetric_key_algorithm:
+          type: integer
+        version:
+          type: integer
+      type: object
+    event.securityHeaderResponse:
+      properties:
+        authentication_cryptogram_buffer:
+          items:
+            type: integer
+          type: array
+        created_at:
+          type: string
+        destiny_asymmetric_key_algorithm:
+          type: string
+        destiny_digital_certificate_pc:
+          type: string
+        destiny_digital_certificate_series:
+          items:
+            type: integer
+          type: array
+        error_code:
+          type: string
+        event_id:
+          type: integer
+        future_use:
+          type: string
+        hash_algorithm:
+          type: string
+        id:
+          type: integer
+        nonce:
+          items:
+            type: integer
+          type: array
+        origin_asymmetric_key_algorithm:
+          type: string
+        origin_digital_certificate_pc:
+          type: string
+        origin_digital_certificate_series:
+          items:
+            type: integer
+          type: array
+        special_handling:
+          type: string
+        symmetric_key:
+          items:
+            type: integer
+          type: array
+        symmetric_key_algorithm:
+          type: string
+        symmetric_key_cryptogram_buffer:
+          items:
+            type: integer
+          type: array
+        total_size:
+          type: integer
+        updated_at:
+          type: string
+        version:
+          type: string
+      type: object
+    github_com_onz-software_onz-spb_internal_adapters_api_handlers_operation_dto.Event:
+      properties:
+        created_at:
+          type: string
+        event_type:
+          type: string
+        id:
+          type: integer
+        idempotency_key:
+          type: string
+        message_type:
+          type: string
+        operation_id:
+          type: string
+        original_operation_id:
+          type: string
+        plaintext:
+          type: string
+        recipient:
+          type: string
+        sender:
+          type: string
+        sent_at:
+          type: string
+        updated_at:
+          type: string
+      type: object
+    github_com_onz-software_onz-spb_internal_adapters_api_handlers_operation_dto.Operation:
+      properties:
+        created_at:
+          type: string
+        created_by:
+          type: string
+        decided_by:
+          type: string
+        domain:
+          type: string
+        event_type:
+          type: string
+        events:
+          items:
+            $ref: >-
+              #/components/schemas/github_com_onz-software_onz-spb_internal_adapters_api_handlers_operation_dto.Event
+          type: array
+        id:
+          type: string
+        operation_type:
+          type: string
+        recipient:
+          type: string
+        sender:
+          type: string
+        status:
+          type: string
+        str_id:
+          type: string
+        timeline:
+          items:
+            $ref: '#/components/schemas/dto.TimelineItem'
+          type: array
+      type: object
+    github_com_onz-software_onz-spb_internal_adapters_api_handlers_operation_dto_spb_types.DateTime:
+      properties:
+        time.Time:
+          type: string
+      type: object
+    github_com_onz-software_onz-spb_internal_adapters_api_handlers_transaction_dto.Institution:
+      properties:
+        code_number:
+          type: string
+        full_name:
+          type: string
+        ispb:
+          type: string
+        short_name:
+          type: string
+      type: object
+    health.readyChecksField:
+      properties:
+        ibmmq:
+          $ref: '#/components/schemas/ports.IBMMQCheck'
+        postgres:
+          $ref: '#/components/schemas/ports.DependencyCheck'
+        rabbitmq:
+          $ref: '#/components/schemas/ports.DependencyCheck'
+      type: object
+    health.readyResponse:
+      properties:
+        checks:
+          $ref: '#/components/schemas/health.readyChecksField'
+        status:
+          type: string
+      type: object
+    operation.FlushUnsentLPEventsResponse:
+      properties:
+        message:
+          example: flush completed
+          type: string
+        sent:
+          example: 42
+          type: integer
+      type: object
+    ports.BackfillCertificateValidityRunStats:
+      properties:
+        batches_run:
+          type: integer
+        remaining_after:
+          type: integer
+        rows_scanned:
+          type: integer
+        rows_still_null:
+          type: integer
+        rows_updated:
+          type: integer
+        stopped_by_budget:
+          type: boolean
+      type: object
+    ports.CertificateNullValidityPreviewItem:
+      properties:
+        created_at:
+          type: string
+        hash:
+          type: string
+        id:
+          type: integer
+        ispb:
+          type: string
+      type: object
+    ports.DependencyCheck:
+      properties:
+        reason:
+          type: string
+        status:
+          $ref: '#/components/schemas/ports.DependencyStatus'
+      type: object
+    ports.DependencyStatus:
+      enum:
+        - up
+        - down
+      type: string
+      x-enum-varnames:
+        - DependencyUp
+        - DependencyDown
+    ports.IBMMQCheck:
+      properties:
+        queue_managers:
+          items:
+            $ref: '#/components/schemas/ports.QueueManagerCheck'
+          type: array
+        status:
+          $ref: '#/components/schemas/ports.DependencyStatus'
+      type: object
+    ports.QueueManagerCheck:
+      properties:
+        key:
+          type: string
+        reason:
+          type: string
+        status:
+          $ref: '#/components/schemas/ports.DependencyStatus'
+      type: object
+    str.balanceLatestResponse:
+      properties:
+        data:
+          $ref: '#/components/schemas/dto.BalanceSnapshotResponse'
+      type: object
+    systemconfig.CreateSystemConfigRequest:
+      properties:
+        key:
+          example: feature.foo.enabled
+          type: string
+        value:
+          type: object
+      type: object
+    systemconfig.ListSystemConfigResponse:
+      properties:
+        data:
+          items:
+            $ref: '#/components/schemas/systemconfig.SystemConfigItem'
+          type: array
+      type: object
+    systemconfig.SystemConfigItem:
+      properties:
+        created_at:
+          example: '2026-04-22T12:00:00Z'
+          type: string
+        id:
+          example: 42
+          type: integer
+        key:
+          example: feature.foo.enabled
+          type: string
+        updated_at:
+          example: '2026-04-22T12:00:00Z'
+          type: string
+        value:
+          type: object
+      type: object
+    systemconfig.UpdateSystemConfigRequest:
+      properties:
+        value:
+          type: object
+      type: object
+    transaction.EnqueueResponse:
+      properties:
+        enqueued:
+          example: 12
+          type: integer
+        message:
+          example: Reprocessamento enfileirado
+          type: string
+      type: object
+    types.DataQueryResponse-dto_AuditEventItem:
+      properties:
+        data:
+          items:
+            $ref: '#/components/schemas/dto.AuditEventItem'
+          type: array
+        meta:
+          $ref: '#/components/schemas/types.PaginationResponse'
+      type: object
+    types.DataQueryResponse-dto_BalanceSnapshotResponse:
+      properties:
+        data:
+          items:
+            $ref: '#/components/schemas/dto.BalanceSnapshotResponse'
+          type: array
+        meta:
+          $ref: '#/components/schemas/types.PaginationResponse'
+      type: object
+    types.DataQueryResponse-dto_CertificateListItem:
+      properties:
+        data:
+          items:
+            $ref: '#/components/schemas/dto.CertificateListItem'
+          type: array
+        meta:
+          $ref: '#/components/schemas/types.PaginationResponse'
+      type: object
+    types.DataQueryResponse-dto_File:
+      properties:
+        data:
+          items:
+            $ref: '#/components/schemas/dto.File'
+          type: array
+        meta:
+          $ref: '#/components/schemas/types.PaginationResponse'
+      type: object
+    types.DataQueryResponse-dto_MissingTransactionItem:
+      properties:
+        data:
+          items:
+            $ref: '#/components/schemas/dto.MissingTransactionItem'
+          type: array
+        meta:
+          $ref: '#/components/schemas/types.PaginationResponse'
+      type: object
+    types.DataQueryResponse-dto_Participant:
+      properties:
+        data:
+          items:
+            $ref: '#/components/schemas/dto.Participant'
+          type: array
+        meta:
+          $ref: '#/components/schemas/types.PaginationResponse'
+      type: object
+    types.DataQueryResponse-dto_Statement:
+      properties:
+        data:
+          items:
+            $ref: '#/components/schemas/dto.Statement'
+          type: array
+        meta:
+          $ref: '#/components/schemas/types.PaginationResponse'
+      type: object
+    types.DataQueryResponse-dto_Transaction:
+      properties:
+        data:
+          items:
+            $ref: '#/components/schemas/dto.Transaction'
+          type: array
+        meta:
+          $ref: '#/components/schemas/types.PaginationResponse'
+      type: object
+    types.DataQueryResponse-event_eventAdminResponse:
+      properties:
+        data:
+          items:
+            $ref: '#/components/schemas/event.eventAdminResponse'
+          type: array
+        meta:
+          $ref: '#/components/schemas/types.PaginationResponse'
+      type: object
+    types.DataQueryResponse-github_com_onz-software_onz-spb_internal_adapters_api_handlers_operation_dto_Event:
+      properties:
+        data:
+          items:
+            $ref: >-
+              #/components/schemas/github_com_onz-software_onz-spb_internal_adapters_api_handlers_operation_dto.Event
+          type: array
+        meta:
+          $ref: '#/components/schemas/types.PaginationResponse'
+      type: object
+    types.DataQueryResponse-github_com_onz-software_onz-spb_internal_adapters_api_handlers_operation_dto_Operation:
+      properties:
+        data:
+          items:
+            $ref: >-
+              #/components/schemas/github_com_onz-software_onz-spb_internal_adapters_api_handlers_operation_dto.Operation
+          type: array
+        meta:
+          $ref: '#/components/schemas/types.PaginationResponse'
+      type: object
+    types.DataQueryResponse-ports_CertificateNullValidityPreviewItem:
+      properties:
+        data:
+          items:
+            $ref: '#/components/schemas/ports.CertificateNullValidityPreviewItem'
+          type: array
+        meta:
+          $ref: '#/components/schemas/types.PaginationResponse'
+      type: object
+    types.PaginationResponse:
+      properties:
+        current_page:
+          type: integer
+        first_page:
+          type: integer
+        last_page:
+          type: integer
+        per_page:
+          type: integer
+        total:
+          type: integer
+      type: object
+    version.VersionResponse:
+      properties:
+        commit:
+          example: a1b2c3d
+          type: string
+        version:
+          example: 1.42.0
+          type: string
+      type: object
+    webhook.CreateWebhookRequest:
+      properties:
+        event_types:
+          items:
+            $ref: '#/components/schemas/domain.WebhookEventType'
+          type: array
+        ispb:
+          type: string
+        max_retries:
+          type: integer
+        method:
+          type: string
+        secret:
+          type: string
+        status:
+          $ref: '#/components/schemas/domain.WebhookStatus'
+        timeout_secs:
+          type: integer
+        url:
+          type: string
+      type: object
+    webhook.CreateWebhookResponse:
+      properties:
+        created_at:
+          $ref: >-
+            #/components/schemas/github_com_onz-software_onz-spb_internal_adapters_api_handlers_operation_dto_spb_types.DateTime
+        event_types:
+          items:
+            $ref: '#/components/schemas/domain.WebhookEventType'
+          type: array
+        id:
+          type: integer
+        ispb:
+          type: string
+        max_retries:
+          type: integer
+        method:
+          type: string
+        secret:
+          type: string
+        status:
+          $ref: '#/components/schemas/domain.WebhookStatus'
+        timeout_secs:
+          type: integer
+        updated_at:
+          $ref: >-
+            #/components/schemas/github_com_onz-software_onz-spb_internal_adapters_api_handlers_operation_dto_spb_types.DateTime
+        url:
+          type: string
+      type: object
+    webhook.GetWebhookResponse:
+      properties:
+        created_at:
+          $ref: >-
+            #/components/schemas/github_com_onz-software_onz-spb_internal_adapters_api_handlers_operation_dto_spb_types.DateTime
+        event_types:
+          items:
+            $ref: '#/components/schemas/domain.WebhookEventType'
+          type: array
+        id:
+          type: integer
+        ispb:
+          type: string
+        max_retries:
+          type: integer
+        method:
+          type: string
+        secret:
+          type: string
+        status:
+          $ref: '#/components/schemas/domain.WebhookStatus'
+        timeout_secs:
+          type: integer
+        updated_at:
+          $ref: >-
+            #/components/schemas/github_com_onz-software_onz-spb_internal_adapters_api_handlers_operation_dto_spb_types.DateTime
+        url:
+          type: string
+      type: object
+    webhook.ListWebhookResponse:
+      properties:
+        data:
+          items:
+            $ref: '#/components/schemas/webhook.WebhookSummary'
+          type: array
+        total:
+          type: integer
+      type: object
+    webhook.UpdateWebhookRequest:
+      properties:
+        event_types:
+          items:
+            $ref: '#/components/schemas/domain.WebhookEventType'
+          type: array
+        ispb:
+          type: string
+        max_retries:
+          type: integer
+        method:
+          type: string
+        secret:
+          type: string
+        status:
+          $ref: '#/components/schemas/domain.WebhookStatus'
+        timeout_secs:
+          type: integer
+        url:
+          type: string
+      type: object
+    webhook.UpdateWebhookResponse:
+      properties:
+        created_at:
+          $ref: >-
+            #/components/schemas/github_com_onz-software_onz-spb_internal_adapters_api_handlers_operation_dto_spb_types.DateTime
+        event_types:
+          items:
+            $ref: '#/components/schemas/domain.WebhookEventType'
+          type: array
+        id:
+          type: integer
+        ispb:
+          type: string
+        max_retries:
+          type: integer
+        method:
+          type: string
+        secret:
+          type: string
+        status:
+          $ref: '#/components/schemas/domain.WebhookStatus'
+        timeout_secs:
+          type: integer
+        updated_at:
+          $ref: >-
+            #/components/schemas/github_com_onz-software_onz-spb_internal_adapters_api_handlers_operation_dto_spb_types.DateTime
+        url:
+          type: string
+      type: object
+    webhook.WebhookSummary:
+      properties:
+        created_at:
+          $ref: >-
+            #/components/schemas/github_com_onz-software_onz-spb_internal_adapters_api_handlers_operation_dto_spb_types.DateTime
+        event_types:
+          items:
+            $ref: '#/components/schemas/domain.WebhookEventType'
+          type: array
+        id:
+          type: integer
+        ispb:
+          type: string
+        max_retries:
+          type: integer
+        method:
+          type: string
+        status:
+          $ref: '#/components/schemas/domain.WebhookStatus'
+        timeout_secs:
+          type: integer
+        updated_at:
+          $ref: >-
+            #/components/schemas/github_com_onz-software_onz-spb_internal_adapters_api_handlers_operation_dto_spb_types.DateTime
+        url:
+          type: string
+      type: object
+    LpMessage:
+      type: object
+      properties:
+        id:
+          type: integer
+        operation_id:
+          type: string
+        event_type:
+          type: string
+        message_type:
+          type: string
+        sender:
+          type: string
+        recipient:
+          type: string
+        plaintext:
+          type: string
+        created_at:
+          type: string
+        updated_at:
+          type: string
+      required:
+        - id
+        - operation_id
+        - event_type
+        - message_type
+        - sender
+        - recipient
+        - plaintext
+        - created_at
+        - updated_at
+      additionalProperties: false
+      description: Next SPB message envelope delivered to the participant.

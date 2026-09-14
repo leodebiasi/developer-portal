@@ -1,0 +1,16 @@
+---
+title: "Cash operations"
+description: "API interna de cash-in, cash-out e lançamentos manuais. Não faz parte do portal público."
+---
+
+API **interna** de operações de caixa. Rotas sob `/internal`, autenticação por token interno. Não use esta spec em integração de parceiro.
+
+## Operações
+
+| Tipo | Processamento | Resposta | Idempotência |
+| --- | --- | --- | --- |
+| Cash-in | Assíncrono (fila) | `202 Accepted` | `e2eId` |
+| Cash-out | Síncrono | `201 Created` | `208` se já existe |
+| Lançamento manual | Síncrono | `200 OK` | ajuste de saldo (crédito/débito) |
+
+A referência gerada a partir de `openapi/cash-operations.yaml` está na aba **Referência**.

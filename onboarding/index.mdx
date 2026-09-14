@@ -1,0 +1,23 @@
+---
+title: "Onboarding"
+description: "Abertura de contas pessoa física e jurídica, com envio de documentos."
+---
+
+API de abertura de conta na plataforma ONZ. Permite criar onboarding de:
+
+- Pessoa física (`NATURAL_PERSON`)
+- Pessoa jurídica (`LEGAL_PERSON`)
+
+Host de produção: `https://secureapi.onz.finance/api/v2`. Sandbox: `https://secureapi.bancodigital.hmg.onz.software/api/v2`.
+
+## Fluxo
+
+1. `POST /onboarding` com os dados da pessoa (e da empresa, se PJ).
+2. `POST /onboarding/{id}/images` com frente/verso do documento e selfie (`FRONT`, `BACK`, `SELFIE`).
+3. Acompanhe o status até a aprovação operacional.
+
+<Note>
+Onboarding **BaaS** (contas filhas de um parceiro) usa a credencial BaaS autenticada, **sem** `x-account-id`. Veja também a jornada na [Banking API](/banking/onboarding-journey).
+</Note>
+
+A referência gerada a partir de `openapi/onboarding.yaml` está na aba **Referência**.

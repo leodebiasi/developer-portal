@@ -1,0 +1,23 @@
+---
+title: "Propostas eConsignado CLT"
+description: "Listagem de leads, envio de propostas com ou sem garantias e registro do desfecho na CTPS Digital."
+---
+
+Fluxo de leilão eConsignado CLT na API de Contas: o trabalhador solicita crédito na CTPS Digital, sua instituição lista o lead, envia 1 ou 2 propostas e registra o desfecho.
+
+O que enviar depende de `requires_guarantees` no lead:
+
+- `false` → **uma** proposta, com `has_guarantees: false`
+- `true` → **duas** propostas no mesmo request (com e sem garantias), cada uma com `proposal_number` distinto
+
+<CardGroup cols={3}>
+  <Card title="Listar leads" href="/contas/credito-trabalhador/propostas-econsignado-clt/listar-leads">
+    Filtros por status, CPF e janela de criação.
+  </Card>
+  <Card title="Enviar propostas" href="/contas/credito-trabalhador/propostas-econsignado-clt/enviar-propostas">
+    1 ou 2 propostas, taxas e garantias espelhando o lead.
+  </Card>
+  <Card title="Registrar desfecho" href="/contas/credito-trabalhador/propostas-econsignado-clt/registrar-desfecho">
+    Aceite ou recusa na CTPS Digital.
+  </Card>
+</CardGroup>

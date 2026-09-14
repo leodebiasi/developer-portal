@@ -1,0 +1,468 @@
+---
+title: "Requisitos de Segurança"
+description: "Este documento descreve as ferramentas e componentes mínimos que sua instituição parceira precisa ter implementados para se conectar de forma segura à Banking API."
+---
+Este documento descreve as ferramentas e componentes mínimos que sua instituição parceira precisa ter implementados para se conectar de forma segura à Banking API.
+
+## 📋 Visão Geral
+
+Para garantir uma integração segura e em conformidade com os padrões de segurança bancária, sua instituição precisa implementar três camadas fundamentais de proteção:
+
+1. **Backend for Frontend (BFF)** - Camada intermediária entre seu frontend e nossa API
+2. **Sistema de Autenticação** - Validação e gerenciamento de usuários finais
+3. **Controle de Usuários Finais** - Gestão de acesso e permissões dos usuários
+
+## 🏗️ Arquitetura Recomendada
+
+```
+┌─────────────────┐
+│  Frontend       │
+│  (Seu App)      │
+└────────┬────────┘
+         │
+         │ HTTPS
+         │
+┌────────▼─────────────────┐
+│  Backend for Frontend    │  ← OBRIGATÓRIO
+│  (BFF)                   │
+│  - Validação de sessão   │
+│  - Rate limiting         │
+│  - Logging               │
+└────────┬─────────────────┘
+         │
+         │ mTLS + client credentials
+         │
+┌────────▼─────────────────┐
+│  Sistema de Autenticação │  ← OBRIGATÓRIO
+│  - Validação de login    │
+│  - Gerenciamento de      │
+│    sessões               │
+└────────┬─────────────────┘
+         │
+         │
+┌────────▼─────────────────┐
+│  Controle de Usuários    │  ← OBRIGATÓRIO
+│  - Permissões            │
+│  - Auditoria             │
+└────────┬─────────────────┘
+         │
+         │ mTLS + client credentials
+         │
+┌────────▼─────────────────┐
+│  Banking API             │
+│  (ONZ Finance)           │
+└──────────────────────────┘
+```
+
+## 1️⃣ Backend for Frontend (BFF)
+
+### O que é um BFF?
+
+O BFF é uma camada intermediária entre seu frontend e nossa API Banking. Ele atua como um proxy seguro que:
+
+- **Nunca expõe credenciais** ao frontend
+- **Valida e sanitiza** todas as requisições
+- **Implementa rate limiting** por usuário
+- **Centraliza lógica de negócio** relacionada à integração
+- **Gerencia tokens** OAuth2 de forma segura
+
+### Por que é obrigatório?
+
+- **Segurança**: Credenciais (`client_id` e `client_secret`) nunca devem estar no frontend
+- **Compliance**: Atende requisitos de segurança bancária (PCI-DSS, LGPD)
+- **Controle**: Permite monitoramento e auditoria de todas as requisições
+- **Isolamento**: Protege sua infraestrutura interna
+
+### Funcionalidades Mínimas
+
+Seu BFF deve implementar:
+
+#### ✅ Autenticação de Sessão
+
+```typescript
+// Exemplo: Validação de sessão do usuário final
+async function validateUserSession(sessionToken: string) {
+  // Validar token de sessão do seu sistema
+  const user = await yourAuthService.validateSession(sessionToken);
+  if (!user) {
+    throw new Error('Sessão inválida');
+  }
+  return user;
+}
+```
+
+#### ✅ Gerenciamento de Tokens de acesso
+
+```typescript
+// Exemplo: Cache e renovação automática de tokens
+class TokenManager {
+  private token: string | null = null;
+  private expiresAt: number = 0;
+  private httpsAgent = new (require('https').Agent)({
+    cert: require('fs').readFileSync(process.env.CERT_PATH),
+    key: require('fs').readFileSync(process.env.KEY_PATH),
+    ca: require('fs').readFileSync(process.env.CA_PATH),
+  });
+
+  async getToken(): Promise<string> {
+    if (this.token && Date.now() < this.expiresAt - 5 * 60 * 1000) {
+      return this.token;
+    }
+
+    // Obter token usando client_credentials
+    const response = await fetch(
+      'https://secureapi.onz.finance/auth/token',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          grant_type: 'client_credentials',
+          client_id: process.env.CLIENT_ID!,
+          client_secret: process.env.CLIENT_SECRET!,
+        }),
+        agent: this.httpsAgent,
+      },
+    );
+
+    const data = await response.json();
+    this.token = data.access_token;
+    this.expiresAt = Date.now() + data.expires_in * 1000;
+
+    return this.token;
+  }
+}
+```
+
+#### ✅ Proxy de Requisições
+
+```typescript
+// Exemplo: Proxy seguro de requisições
+app.post('/api/banking/accounts/:id/balance', async (req, res) => {
+  // 1. Validar sessão do usuário
+  const user = await validateUserSession(req.headers.authorization);
+
+  // 2. Obter token OAuth2
+  const token = await tokenManager.getToken();
+
+  // 3. Fazer requisição à Banking API
+  const response = await fetch(
+    `https://secureapi.onz.finance/accounts/${req.params.id}/balance`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    },
+  );
+
+  // 4. Retornar resposta ao frontend
+  const data = await response.json();
+  res.json(data);
+});
+```
+
+#### ✅ Rate Limiting
+
+```typescript
+// Exemplo: Rate limiting por usuário
+import rateLimit from 'express-rate-limit';
+
+const bankingApiLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minuto
+  max: 100, // 100 requisições por minuto por usuário
+  keyGenerator: (req) => {
+    // Usar ID do usuário como chave
+    return req.user.id;
+  },
+});
+
+app.use('/api/banking', bankingApiLimiter);
+```
+
+#### ✅ Logging e Auditoria
+
+```typescript
+// Exemplo: Logging de todas as requisições
+app.use('/api/banking', (req, res, next) => {
+  logger.info({
+    userId: req.user.id,
+    endpoint: req.path,
+    method: req.method,
+    timestamp: new Date().toISOString(),
+    x,
+  });
+  next();
+});
+```
+
+### Tecnologias Recomendadas
+
+- **Node.js**: Express, Fastify, NestJS
+- **Python**: FastAPI, Flask
+- **Java**: Spring Boot
+- **Go**: Gin, Echo
+
+> **Importante**: O BFF deve rodar em servidor seguro, nunca no navegador do usuário.
+
+## 2️⃣ Sistema de Autenticação
+
+### O que é necessário?
+
+Você precisa ter um sistema de autenticação que:
+
+- **Valida credenciais** de usuários finais (login/senha, 2FA, etc)
+- **Gerencia sessões** de forma segura
+- **Emite tokens de sessão** que seu BFF pode validar
+- **Implementa políticas de segurança** (senha forte, bloqueio de conta, etc)
+
+### Funcionalidades Mínimas
+
+#### ✅ Autenticação de Usuários
+
+```typescript
+// Exemplo: Login de usuário
+async function loginUser(email: string, password: string) {
+  // 1. Validar credenciais
+  const user = await userService.validateCredentials(email, password);
+
+  // 2. Verificar 2FA se necessário
+  if (user.requires2FA) {
+    await twoFactorService.sendCode(user.id);
+    return { requires2FA: true };
+  }
+
+  // 3. Criar sessão
+  const sessionToken = await sessionService.createSession(user.id);
+
+  return {
+    sessionToken,
+    user: {
+      id: user.id,
+      email: user.email,
+    },
+  };
+}
+```
+
+#### ✅ Validação de Sessão
+
+```typescript
+// Exemplo: Middleware de validação de sessão
+async function validateSession(req, res, next) {
+  const sessionToken = req.headers.authorization?.replace('Bearer ', '');
+
+  if (!sessionToken) {
+    return res.status(401).json({ error: 'Token não fornecido' });
+  }
+
+  const session = await sessionService.validateSession(sessionToken);
+
+  if (!session || session.expiresAt < new Date()) {
+    return res.status(401).json({ error: 'Sessão inválida ou expirada' });
+  }
+
+  req.user = await userService.getUserById(session.userId);
+  next();
+}
+```
+
+#### ✅ Logout e Revogação
+
+```typescript
+// Exemplo: Logout
+async function logoutUser(sessionToken: string) {
+  await sessionService.revokeSession(sessionToken);
+}
+```
+
+### Requisitos de Segurança
+
+- ✅ **Senhas**: Mínimo 8 caracteres, complexidade adequada
+- ✅ **2FA**: Recomendado para operações sensíveis
+- ✅ **Bloqueio de conta**: Após N tentativas falhas
+- ✅ **Tokens JWT**: Com expiração adequada (ex: 1 hora)
+- ✅ **HTTPS**: Obrigatório em produção
+- ✅ **Rate limiting**: Proteção contra brute force
+
+### Tecnologias Recomendadas
+
+- **Keycloak**: Solução completa de IAM
+- **Auth0**: Serviço gerenciado
+- **Ory Kratos**: Solução open-source
+- **Solução própria**: Desenvolvida internamente
+
+> **Nota**: Você pode usar qualquer solução de autenticação, desde que seu BFF consiga validar as sessões.
+
+## 3️⃣ Controle de Usuários Finais
+
+### O que é necessário?
+
+Você precisa ter controle sobre:
+
+- **Quem pode acessar** a Banking API através do seu sistema
+- **Quais operações** cada usuário pode realizar
+- **Auditoria** de todas as ações realizadas
+- **Gestão de permissões** e roles
+
+### Funcionalidades Mínimas
+
+#### ✅ Gestão de Permissões
+
+```typescript
+// Exemplo: Sistema de permissões
+interface Permission {
+  resource: string; // 'account', 'balance', 'transfer'
+  action: string; // 'read', 'write', 'delete'
+}
+
+interface UserRole {
+  id: string;
+  name: string;
+  permissions: Permission[];
+}
+
+// Verificar permissão antes de fazer requisição
+async function checkPermission(
+  userId: string,
+  resource: string,
+  action: string,
+): Promise<boolean> {
+  const user = await userService.getUserById(userId);
+  const role = await roleService.getRole(user.roleId);
+
+  return role.permissions.some(
+    (p) => p.resource === resource && p.action === action,
+  );
+}
+```
+
+#### ✅ Auditoria
+
+```typescript
+// Exemplo: Log de auditoria
+async function auditLog(
+  userId: string,
+  action: string,
+  resource: string,
+  details: any,
+) {
+  await auditService.log({
+    userId,
+    action,
+    resource,
+    details,
+    timestamp: new Date(),
+    ipAddress: req.ip,
+    userAgent: req.headers['user-agent'],
+  });
+}
+
+// Usar no BFF
+app.post('/api/banking/accounts/:id/balance', async (req, res) => {
+  // Verificar permissão
+  const hasPermission = await checkPermission(req.user.id, 'account', 'read');
+
+  if (!hasPermission) {
+    return res.status(403).json({ error: 'Sem permissão' });
+  }
+
+  // Fazer requisição
+  const balance = await bankingApi.getBalance(req.params.id);
+
+  // Registrar auditoria
+  await auditLog(req.user.id, 'READ_BALANCE', `account:${req.params.id}`, {
+    accountId: req.params.id,
+  });
+
+  res.json(balance);
+});
+```
+
+#### ✅ Controle de Acesso por Usuário
+
+```typescript
+// Exemplo: Verificar se usuário pode acessar recurso específico
+async function canUserAccessAccount(
+  userId: string,
+  accountId: string,
+): Promise<boolean> {
+  // Verificar se o usuário tem permissão para acessar esta conta específica
+  const userAccounts = await userAccountService.getUserAccounts(userId);
+  return userAccounts.some((account) => account.id === accountId);
+}
+```
+
+### Requisitos Mínimos
+
+- ✅ **RBAC**: Role-Based Access Control (controle baseado em roles)
+- ✅ **Auditoria**: Log de todas as operações realizadas
+- ✅ **Isolamento**: Usuários só podem acessar recursos autorizados
+- ✅ **Revogação**: Capacidade de revogar acesso imediatamente
+
+## 🔒 Segurança Adicional
+
+### Armazenamento de Credenciais
+
+**NUNCA** armazene credenciais da Banking API no frontend ou em código:
+
+```typescript
+// ❌ NUNCA faça isso
+const CLIENT_SECRET = 'minha-chave-secreta'; // NO FRONTEND
+
+// ✅ Faça isso
+// No BFF (servidor)
+const CLIENT_SECRET = process.env.CLIENT_SECRET; // Variável de ambiente
+```
+
+### Certificados mTLS
+
+Se você gerar ou baixar certificados mTLS pela plataforma CORE:
+
+- ✅ Armazene em local seguro (secret manager, vault)
+- ✅ Use permissões restritas (chmod 600)
+- ✅ Configure rotação automática
+- ✅ Nunca commite no repositório
+
+### Variáveis de Ambiente
+
+Use variáveis de ambiente ou secret managers:
+
+```bash
+# .env (nunca commitar)
+CLIENT_ID=seu-client-id
+CLIENT_SECRET=seu-client-secret
+CERT_PATH=/secure/path/to/cert.pem
+KEY_PATH=/secure/path/to/key.pem
+```
+
+## 📋 Checklist de Implementação
+
+Antes de solicitar acesso à Banking API, certifique-se de ter:
+
+- [ ] **BFF implementado** e rodando em servidor seguro
+- [ ] **Sistema de autenticação** funcionando
+- [ ] **Controle de usuários** e permissões implementado
+- [ ] **Logging e auditoria** configurados
+- [ ] **Rate limiting** implementado
+- [ ] **HTTPS** configurado em produção
+- [ ] **Credenciais** armazenadas de forma segura
+- [ ] **Certificados mTLS** (se aplicável) configurados
+
+## 🚀 Próximos Passos
+
+Após implementar os requisitos acima:
+
+1. **[Onboarding do Parceiro](/banking/partner-onboarding)** - Siga o passo a passo para se conectar
+2. **[Autenticação & mTLS](/banking/auth-and-mtls)** - Configure client credentials e mTLS
+3. **[Getting Started](/banking/getting-started)** - Faça sua primeira requisição
+
+## 📞 Suporte
+
+Se tiver dúvidas sobre os requisitos de segurança:
+
+- Email: `suporte@onz.finance`
+- Assunto: "Requisitos de Segurança - Banking API"
+
+---
+
+**Última Atualização:** 2024-11-24  
+**Versão:** 1.0.0

@@ -1,0 +1,24 @@
+---
+title: "CloudPix"
+description: "Interface ICOM e DICT (chaves, MED, antifraude) no ambiente de gestão Pix da ONZ."
+---
+
+API de infraestrutura Pix usada internamente pelos produtos ONZ: ICOM, DICT (chaves, estatísticas, QR Codes, antifraude, infrações, MED 2.0, devoluções, reconciliações e reivindicações).
+
+<Note>
+O host **não é público**. Solicite o endpoint por e-mail a [suporte@onz.software](mailto:suporte@onz.software), informando o IP de origem. A conexão usa certificado cliente (PFX) fornecido junto com o endpoint.
+</Note>
+
+Todos os requests, **exceto login**, precisam do header `ONZ-Token`. Sem ele a API responde `401`.
+
+O playground do browser não envia o PFX — use `curl`, Bruno ou Postman.
+
+## O que a spec cobre
+
+- ICOM (transações e consultas)
+- DICT — chaves, estatísticas, QR Codes
+- Antifraude e marcações de fraude
+- Infrações e MED 2.0
+- Devoluções, reconciliações e reivindicações
+
+A referência gerada a partir de `openapi/cloudpix.yaml` está na aba **Referência**.

@@ -1,0 +1,143 @@
+---
+title: "Fee Rules (Automatic Debits)"
+description: "Gerencie as regras usadas para gerar débitos automáticos (tarifas) do parceiro BaaS."
+---
+Gerencie as regras usadas para gerar débitos automáticos (tarifas) do parceiro **BaaS**.
+
+Esta API replica a lógica do portal de parceiros (`/feeRules/list`), mas sob o contrato OAuth da Banking API. O tenant é sempre o `baas_id` da credencial BAAS autenticada.
+
+## Pré-requisitos
+
+- Credencial com `credential_type = BAAS`
+- Scopes:
+  - `fee-rules.read` — listar e consultar
+  - `fee-rules.write` — criar, atualizar e excluir
+
+## Endpoints
+
+| Método | Path | Scope | Descrição |
+| ------ | ---- | ----- | --------- |
+| `GET` | `/fee-rules` | `fee-rules.read` | Lista paginada |
+| `GET` | `/fee-rules/{id}` | `fee-rules.read` | Detalhe |
+| `POST` | `/fee-rules` | `fee-rules.write` | Criar |
+| `PUT` | `/fee-rules/{id}` | `fee-rules.write` | Atualizar |
+| `DELETE` | `/fee-rules/{id}` | `fee-rules.write` | Excluir |
+
+## Listar regras
+
+```bash
+curl -X GET "https://secureapi.onz.finance/fee-rules?page=1&perPage=20&filter=pix" \
+  -H "Authorization: Bearer SEU_TOKEN" \
+  --cert client.pem --key client.key
+```
+
+O parâmetro `filter` busca por nome (case-insensitive). Filtro por conta **não** é query param: use o requirement `ACCOUNT_NUMBER` na regra.
+
+### Resposta
+
+```json
+{
+  "meta": {
+    "total": 1,
+    "perPage": 20,
+    "currentPage": 1,
+    "firstPage": 1,
+    "lastPage": 1,
+    "nextPage": null,
+    "prevPage": null
+  },
+  "data": [
+    {
+      "id": "c55fa769-6364-4e1c-968b-d4880aa9a952",
+      "baasId": "3a6965ce-c5b1-4a5b-bf60-45e05203a5f2",
+      "name": "Tarifa PIX crédito",
+      "percent": 1.5,
+      "fixedAmount": 0,
+      "minAmount": 1,
+      "maxAmount": 50,
+      "weight": 2,
+      "effectiveDate": null,
+      "requirements": [
+        {
+          "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "type": "ACCOUNT_NUMBER",
+          "value": "12345"
+        }
+      ],
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-02T00:00:00.000Z"
+    }
+  ]
+}
+```
+
+## Criar regra
+
+```bash
+curl -X POST "https://secureapi.onz.finance/fee-rules" \
+  -H "Authorization: Bearer SEU_TOKEN" \
+  -H "Content-Type: application/json" \
+  --cert client.pem --key client.key \
+  -d '{
+    "name": "Tarifa PIX crédito",
+    "percent": 1.5,
+    "fixedAmount": 0,
+    "minAmount": 1,
+    "maxAmount": 50,
+    "effectiveDate": null,
+    "requirements": [
+      { "type": "ACCOUNT_NUMBER", "value": "12345" },
+      { "type": "MOVEMENT_TYPE", "value": "CREDIT" }
+    ]
+  }'
+```
+
+O `weight` é atribuído automaticamente como `max(weight do baas) + 1`. Em runtime, a regra de maior `weight` prevalece entre as aplicáveis.
+
+### Tipos de requirement
+
+| Tipo | Uso |
+| ---- | --- |
+| `ACCOUNT_NUMBER` | Número da conta (pagador ou recebedor, conforme movimento) |
+| `PERSON_TYPE` | Tipo de pessoa |
+| `TRANSACTION_TYPE` | Tipo de transação |
+| `MOVEMENT_TYPE` | `CREDIT` ou `DEBIT` |
+
+Todos os requirements de uma regra são avaliados com **AND**.
+
+## Atualizar regra
+
+```bash
+curl -X PUT "https://secureapi.onz.finance/fee-rules/{id}" \
+  -H "Authorization: Bearer SEU_TOKEN" \
+  -H "Content-Type: application/json" \
+  --cert client.pem --key client.key \
+  -d '{
+    "name": "Tarifa PIX crédito",
+    "weight": 3,
+    "percent": 2,
+    "fixedAmount": 0,
+    "minAmount": 1,
+    "maxAmount": 80
+  }'
+```
+
+Não é possível alterar `requirements` nem `effectiveDate` neste endpoint (paridade com o portal). Para mudar requirements, exclua e recrie a regra.
+
+Se o `weight` informado já existir para o mesmo BaaS, a API responde `409`.
+
+## Excluir regra
+
+```bash
+curl -X DELETE "https://secureapi.onz.finance/fee-rules/{id}" \
+  -H "Authorization: Bearer SEU_TOKEN" \
+  --cert client.pem --key client.key
+```
+
+Resposta: `204 No Content`.
+
+## Isolamento
+
+- Credenciais `ACCOUNT` recebem `403`
+- Regras de outro `baasId` não são visíveis (`404` no detalhe)
+- O `baasId` da resposta sempre corresponde ao token

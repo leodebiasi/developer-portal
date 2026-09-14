@@ -1,0 +1,15 @@
+overlay: 1.0.0
+info:
+  title: Banking API servers
+  version: 1.0.0
+extends: ../openapi/banking-api.json
+actions:
+  - target: $.servers
+    remove: true
+  - target: $
+    update:
+      servers:
+        - url: https://secureapi.onz.finance
+          description: Produção (confirme o host da credencial no CORE)
+        - url: https://secureapi.bancodigital.hmg.onz.software
+          description: Sandbox

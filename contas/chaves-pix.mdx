@@ -1,0 +1,177 @@
+---
+title: "Gerenciando chaves Pix"
+description: "A API de Contas (/api/v2) permite listar, criar e remover as chaves Pix da conta autenticada."
+---
+A API de Contas (`/api/v2`) permite listar, criar e remover as chaves Pix da conta autenticada.
+
+| Operação | Método e path | Scope |
+| --- | --- | --- |
+| Listar chaves da conta | `GET /accounts/keys` | `pix.read` |
+| Solicitar OTP (EMAIL/PHONE) | `POST /accounts/keys/challenge` | `pix.write` |
+| Criar chave | `POST /accounts/keys` | `pix.write` |
+| Remover chave | `DELETE /accounts/keys/{key}` | `pix.write` |
+
+> **Importante:** `GET /pix/keys/{key}` consulta o DICT de qualquer chave informada. Não lista nem gerencia as chaves da sua conta. Para isso, use `/accounts/keys`.
+
+Todas as requisições abaixo usam:
+
+- `Authorization: Bearer <access_token>`
+- `x-account-id: <id da conta>` (quando a credencial for BaaS)
+
+Base URL: `https://secureapi.onz.finance/api/v2`
+
+---
+
+## Quais tipos de chave posso criar?
+
+| Tipo | OTP necessário? | Observação |
+| --- | --- | --- |
+| `EVP` | Não | Chave aleatória gerada pelo DICT. Não envie `key`. |
+| `CPF` | Não | Deve ser igual ao CPF da conta (pessoa física). |
+| `CNPJ` | Não | Deve ser igual ao CNPJ da conta (pessoa jurídica). |
+| `EMAIL` | Sim | Exige fluxo de challenge + código OTP. |
+| `PHONE` | Sim | Exige fluxo de challenge + código OTP. Telefone no formato E.164 (ex.: `+5511999999999`). |
+
+---
+
+## Fluxo com OTP (EMAIL e PHONE)
+
+Para criar chave de e-mail ou telefone, a posse do contato precisa ser comprovada com um código OTP.
+
+```
+1. POST /accounts/keys/challenge
+   → envia o OTP para o e-mail/telefone
+   → devolve validationHash (auth hash)
+
+2. Usuário informa o código recebido (validationCode)
+
+3. POST /accounts/keys
+   → envia keyType, key, validationHash e validationCode
+   → cria a chave no DICT
+```
+
+### Passo 1 — Solicitar o OTP (`challenge`)
+
+```bash
+curl --location 'https://secureapi.onz.finance/api/v2/accounts/keys/challenge' \
+  --header 'Authorization: Bearer <access_token>' \
+  --header 'Content-Type: application/json' \
+  --header 'x-account-id: <account_id>' \
+  --data '{
+    "keyType": "EMAIL",
+    "key": "usuario@exemplo.com"
+  }'
+```
+
+Resposta:
+
+```json
+{
+  "validationHash": "550e8400-e29b-41d4-a716-446655440000",
+  "expiresIn": 300
+}
+```
+
+| Campo | Descrição |
+| --- | --- |
+| `validationHash` | Auth hash. Guarde e envie no `POST /accounts/keys`. |
+| `expiresIn` | Validade do código OTP em segundos (300 = 5 minutos). |
+
+O código OTP é enviado para o e-mail ou telefone informado. Ele **não** vem na resposta da API.
+
+### Passo 2 — Criar a chave com hash + código
+
+```bash
+curl --location 'https://secureapi.onz.finance/api/v2/accounts/keys' \
+  --header 'Authorization: Bearer <access_token>' \
+  --header 'Content-Type: application/json' \
+  --header 'x-account-id: <account_id>' \
+  --data '{
+    "keyType": "EMAIL",
+    "key": "usuario@exemplo.com",
+    "validationHash": "550e8400-e29b-41d4-a716-446655440000",
+    "validationCode": "1234"
+  }'
+```
+
+Resposta (200):
+
+```json
+{
+  "key": "usuario@exemplo.com",
+  "keyType": "EMAIL",
+  "branch": "0001",
+  "accountNumber": "123456",
+  "accountType": "CACC",
+  "name": "Cliente Exemplo",
+  "taxIdNumber": "12345678901",
+  "creationDate": "2024-01-01T12:00:00.000Z"
+}
+```
+
+### Regras do challenge
+
+- `validationHash` e `validationCode` são **obrigatórios** para `EMAIL` e `PHONE`.
+- O `key` do create deve ser o **mesmo** usado no challenge.
+- O código expira em **5 minutos**. Se expirar, chame `challenge` novamente para gerar um novo hash e um novo código.
+- Código inválido, expirado ou já utilizado retorna erro (em geral `400`/`403`/`422`).
+- Para reenviar o OTP, chame `POST /accounts/keys/challenge` de novo (o hash anterior deixa de ser válido para um novo fluxo).
+
+---
+
+## Criar chave sem OTP (EVP, CPF, CNPJ)
+
+### EVP (chave aleatória)
+
+```bash
+curl --location 'https://secureapi.onz.finance/api/v2/accounts/keys' \
+  --header 'Authorization: Bearer <access_token>' \
+  --header 'Content-Type: application/json' \
+  --header 'x-account-id: <account_id>' \
+  --data '{
+    "keyType": "EVP"
+  }'
+```
+
+### CPF / CNPJ
+
+```bash
+curl --location 'https://secureapi.onz.finance/api/v2/accounts/keys' \
+  --header 'Authorization: Bearer <access_token>' \
+  --header 'Content-Type: application/json' \
+  --header 'x-account-id: <account_id>' \
+  --data '{
+    "keyType": "CPF",
+    "key": "12345678901"
+  }'
+```
+
+O valor de `key` precisa ser exatamente o documento da conta.
+
+---
+
+## Listar e remover
+
+### Listar
+
+```bash
+curl --location 'https://secureapi.onz.finance/api/v2/accounts/keys' \
+  --header 'Authorization: Bearer <access_token>' \
+  --header 'x-account-id: <account_id>'
+```
+
+### Remover
+
+```bash
+curl --location --request DELETE 'https://secureapi.onz.finance/api/v2/accounts/keys/usuario@exemplo.com' \
+  --header 'Authorization: Bearer <access_token>' \
+  --header 'x-account-id: <account_id>'
+```
+
+A chave precisa pertencer à conta. Se houver cobranças de QR Code ativas associadas, a remoção pode retornar conflito (`409`).
+
+---
+
+## Referência OpenAPI
+
+Consulte a referência da API de Contas (categoria **Chaves Pix**) para schemas e códigos de erro detalhados dos endpoints `/accounts/keys`, `/accounts/keys/challenge`, `/accounts/keys/{key}` e `/pix/keys/{key}`.

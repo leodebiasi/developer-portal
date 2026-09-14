@@ -1,0 +1,28 @@
+---
+title: "Jornada da cobrança"
+description: "Esta seção documenta a API de QR Codes (cobranças Pix imediatas e com vencimento no padrão Bacen). Para emitir Pix, boleto ou híbrido pela API de Contas, use Cobranças Pix e boleto…"
+---
+Esta seção documenta a **API de QR Codes** (cobranças Pix imediatas e com vencimento no padrão Bacen). Para emitir Pix, boleto ou híbrido pela **API de Contas**, use [Cobranças Pix e boleto](/contas/invoices/jornada).
+
+![](/images/charge-journey.png)
+
+1. **Autenticação:**  
+   O primeiro passo no processo de integração é garantir a autenticação segura do parceiro Onz com a própria API Onz. Essa etapa garante que apenas usuários autorizados tenham acesso aos recursos e funcionalidades oferecidas pela plataforma, mantendo a segurança dos dados e das transações.
+2. **Cobrança:**  
+   Com a autenticação concluída, o parceiro Onz está pronto para criar cobranças Pix através da API disponibilizada pela Onz. Através desta interface, o parceiro pode gerar cobranças de forma simples e rápida, especificando detalhes necessários como o valor da fatura e a chave Pix do destinatário.
+3. **Pagamento:**  
+   Uma vez criada a cobrança Pix, o parceiro Onz envia a cobrança ao seu cliente, que poderá efetuar o pagamento pela forma de sua preferência, seja por aplicativo bancário, carteira digital ou outro meio compatível com Pix.
+4. **Notificação:**  
+   Assim que o pagamento da cobrança for efetuado, a Onz notifica o parceiro Onz por meio de uma URL de callback, também conhecida como Webhook. Esta notificação informa o parceiro sobre o estado da operação, permitindo uma resposta imediata e atualizações do estado da transação em tempo real.
+5. **Consulta:**  
+   Para garantir uma visão abrangente das operações realizadas, o parceiro Onz pode consultar detalhes específicos das transações Pix por meio da API Onz. Esta consulta fornece acesso a informações detalhadas sobre cobranças criadas, pagamentos recebidos e outros dados relevantes para o parceiro.
+
+## Pix Automático
+
+Para implementar **cobranças recorrentes** e **Pix Automático**, consulte o guia completo das [Jornadas de Autorização do Pix Automático](/qrcodes/pix-automatico-jornadas). Este guia apresenta passo a passo as 4 jornadas de autorização definidas pelo Banco Central do Brasil para recorrências.
+
+**Antes de iniciar, você deve:**
+
+- Ter as credenciais de serviço (clientId, clientSecret, pixKey). [Podem ser obtidas através do portal Finance](/getting-started/perguntas-frequentes#como-gerar-minhas-credenciais).
+- Ter o certificado para conexão MTLS. Este certificado é enviado em um arquivo compactado pela equipe de integração da Onz Finance junto com a documentação. Extraia o conteúdo deste arquivo para um diretório de sua preferência.
+- Ter o Postman ou uma ferramenta semelhante instalada e [configurado para usar MTLS](/getting-started/assuntos-relacionados-pix#mtls).

@@ -1,0 +1,81 @@
+---
+title: "Jornada"
+description: "Esta jornada usa a API de Contas para emitir cobranças Pix, boleto registrado ou as duas formas no mesmo título (PIX_BOLETO)."
+---
+Esta jornada usa a **API de Contas** (`https://secureapi.onz.finance/api/v2`) para emitir cobranças Pix, boleto registrado ou as duas formas no mesmo título (`PIX_BOLETO`).
+
+Não confundir com a [API de QR Codes](/qrcodes/jornada-cobranca): aquela gera cobranças Pix imediatas e com vencimento no padrão Bacen (cob/cobv). Aqui o contrato é de **invoice** — um título da conta, com pagador cadastrado e, se houver boleto, registro na Núclea.
+
+Referência OpenAPI: [API de Contas](/api-reference/contas).
+
+## Pré-requisitos
+
+- mTLS configurado. Veja [certificado mTLS](/getting-started/perguntas-frequentes#configurando-certificado-mtls).
+- Credencial da API de Contas com os escopos `invoices.read` e `invoices.write`. No Finance: **Configurações → API Contas → Nova credencial**, com a preferência de cobranças habilitada.
+- Token OAuth. Veja [Autenticação](/contas/autenticacao-api-contas).
+- Conta com o módulo de cobranças ligado (`ENABLE_INVOICES`) e sem a feature `INVOICES_DISABLED`.
+- Para Pix: uma chave Pix da própria conta, informada em `pixKey`.
+- Para boleto: a conta precisa estar habilitada como beneficiária PCR.
+
+Credencial BaaS (`clientId` com prefixo `baas_`) opera contas filhas. Envie `x-account-id` com o id interno da conta alvo. Credencial de conta opera a própria conta e não precisa do cabeçalho.
+
+## Fluxo
+
+1. Cadastre o pagador em `POST /customers`.
+2. Crie a cobrança em `POST /invoices` com `x-idempotency-key`.
+3. Se `type` for `SCHEDULED`, emita o rascunho em `POST /invoices/{invoiceId}/emit`. Cobrança `IMMEDIATE` já sai registrada.
+4. Entregue ao pagador o `brCode` (Pix copia e cola) e/ou a linha digitável do boleto.
+5. Receba os eventos no [webhook `INVOICE`](/contas/invoices/webhook).
+6. Consulte status em `GET /invoices/{invoiceId}` ou cancele em `DELETE /invoices/{invoiceId}`.
+
+## Métodos de pagamento
+
+| `paymentMethod` | O que gera | `pixKey` |
+| --- | --- | --- |
+| `PIX` (padrão) | QR Pix (`brCode`) | Obrigatória |
+| `BOLETO` | Boleto registrado (Núclea) | Não enviar |
+| `PIX_BOLETO` | Pix e boleto no mesmo título | Obrigatória |
+
+Linha digitável e código de barras só aparecem depois que a Núclea confirma o registro. Enquanto o status for `REGISTERING` ou `DRAFT`, `boletoBarcode` e `boletoDigitableLine` vêm `null`.
+
+## Tipos
+
+| `type` | Comportamento |
+| --- | --- |
+| `IMMEDIATE` | Registra na criação. Status inicial `PENDING` (Pix) ou `REGISTERING` (boleto). Juros, multa e `daysToPay` são ignorados (zerados). |
+| `SCHEDULED` | Cria em `DRAFT`. Use `POST /invoices/{invoiceId}/emit` para registrar. `dueDate` não pode ser anterior a hoje (America/Sao_Paulo). |
+
+`daysToPay` é a validade após o vencimento (Pix `validadeAposVencimento` / limite do boleto). Datas `YYYY-MM-DD` são interpretadas no fuso `America/Sao_Paulo`.
+
+## Status
+
+| Status | Significado |
+| --- | --- |
+| `DRAFT` | Rascunho. Só `SCHEDULED` antes do emit. |
+| `REGISTERING` | Boleto enviado à PCR, aguardando confirmação. |
+| `PENDING` | Emitida, aguardando pagamento. |
+| `OVERDUE` | Vencida e não paga. |
+| `COMPLETED` | Paga. |
+| `CANCELED` | Cancelada. |
+| `FAILED` | Falha no registro. |
+
+## Erros
+
+Os endpoints `/invoices` e `/customers` respondem no formato do Atlas:
+
+```json
+{
+  "error": "Bad Request",
+  "statusCode": 400,
+  "message": "pixKey is required when payment method includes PIX"
+}
+```
+
+| HTTP | Quando |
+| --- | --- |
+| `401` | Token inválido, escopo ausente, IP fora da allowlist |
+| `403` | Módulo de cobranças desligado na conta |
+| `404` | Invoice ou pagador inexistente nesta conta |
+| `409` | `x-idempotency-key` reutilizada com outro payload |
+| `422` | Juros em dias úteis (tipos 5–8) em boleto |
+| `503` | Autenticação da API de Contas indisponível |

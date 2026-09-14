@@ -1,0 +1,32 @@
+---
+title: "Consultar status da autorização"
+description: "Consulte periodicamente o status até que o trabalhador aceite, recuse ou a autorização expire."
+---
+Consulte periodicamente o status até que o trabalhador aceite, recuse ou a autorização expire.
+
+**Endpoint:** `POST /econsigado/employee/authorization-status`  
+**Scope:** `econsignado.read`
+
+```bash
+curl --location 'https://secureapi.onz.finance/api/v2/econsigado/employee/authorization-status' \
+  --header 'Authorization: Bearer <access_token>' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "cpf": "12345678901"
+  }'
+```
+
+| Campo | Obrigatório | Descrição |
+| --- | --- | --- |
+| `cpf` | Sim | CPF do trabalhador, com 11 dígitos |
+
+## Status possíveis
+
+| Status | Significado |
+| --- | --- |
+| `PENDING` | Aguardando decisão do trabalhador |
+| `ACCEPTED` | Autorização aceita; a consulta de saldo está liberada |
+| `REJECTED` | Autorização recusada |
+| `EXPIRED` | Autorização expirada |
+
+A consulta de saldo FGTS só pode ser realizada quando o status é `ACCEPTED`.

@@ -1,0 +1,13 @@
+overlay: 1.0.0
+info:
+  title: QRCodes servers
+  version: 1.0.0
+extends: ../openapi/qrcodes.yaml
+actions:
+  - target: $.servers
+    remove: true
+  - target: $
+    update:
+      servers:
+        - url: https://pix.onz.finance
+          description: Produção

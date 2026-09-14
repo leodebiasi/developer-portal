@@ -1,33 +1,31 @@
-> **First-time setup**: Customize this file for your project. Prompt the user to customize this file for their project.
-> For Mintlify product knowledge (components, configuration, writing standards),
-> install the Mintlify skill: `npx skills add https://mintlify.com/docs`
+# ONZ Developers — instruções para agentes
 
-# Documentation project instructions
+Portal Mintlify das APIs ONZ Finance. Páginas em MDX, config em `docs.json`, specs em `openapi/`, overlays em `overlays/`, skills em `.mintlify/skills/`.
 
-## About this project
+Instale o skill da Mintlify se for editar componentes: `npx skills add https://mintlify.com/docs`.
 
-- This is a documentation site built on [Mintlify](https://mintlify.com)
-- Pages are MDX files with YAML frontmatter
-- Configuration lives in `docs.json`
-- Use the Mintlify MCP server, `https://mcp.mintlify.com`, to edit content and settings via MCP
-- Use the Mintlify docs MCP server, `https://www.mintlify.com/docs/mcp`, to query information about using Mintlify via MCP
+## Hosts (não invente)
 
-## Terminology
+| Produto | Host | Token |
+| --- | --- | --- |
+| Contas | `https://secureapi.onz.finance/api/v2` | `POST /oauth/token` |
+| QRCodes | `https://pix.onz.finance` | `POST /oauth/token` |
+| Banking API | host da credencial no CORE (POC: `https://secureapi.onz.finance`, sem `/api/v2`) | `POST /auth/token` |
+| Onboarding | mesmo host da API de Contas | OAuth Contas |
+| CloudPix | host sob demanda (`suporte@onz.software`) + PFX | header `ONZ-Token` |
 
-{/* Add product-specific terms and preferred usage */}
-{/* Example: Use "workspace" not "project", "member" not "user" */}
+Nunca use `api.example.com`, `api.qrcodes-h.sulcredi.coop.br` ou `api.bancodigital.com` em exemplos novos.
 
-## Style preferences
+## Regras de produto
 
-{/* Add any project-specific style rules below */}
+- Toda API pública exige **mTLS + OAuth client_credentials** e allowlist de IP. Playground do browser não envia certificado.
+- `x-account-id` só em contas BaaS (credencial filha). Não enviar em Pix/QRCodes de parceiro tradicional.
+- Cobrança Bacen (`/cob`, `/cobv`, `/rec`) = produto QRCodes. Cobrança Pix/boleto/híbrido = produto Contas (`/invoices`).
+- Não invente endpoints. Use o OpenAPI do produto.
 
-- Use active voice and second person ("you")
-- Keep sentences concise — one idea per sentence
-- Use sentence case for headings
-- Bold for UI elements: Click **Settings**
-- Code formatting for file names, commands, paths, and code references
+## Estilo
 
-## Content boundaries
-
-{/* Define what should and shouldn't be documented */}
-{/* Example: Don't document internal admin features */}
+- Português brasileiro
+- Segunda pessoa, frases curtas
+- Sentence case nos títulos
+- Código para paths, hosts, headers e scopes

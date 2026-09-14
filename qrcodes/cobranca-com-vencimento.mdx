@@ -1,0 +1,171 @@
+---
+title: "Cobrança com data de vencimento"
+description: "Uma solicitação de pagamento Pix para cobrança com vencimento normalmente funciona"
+---
+Uma solicitação de pagamento Pix para cobrança com vencimento normalmente funciona:
+
+1. O parceiro Onz Finance acessa a API PIX para criar uma cobrança, fornecendo, entre outros dados, o prazo de vencimento, o valor da obrigação, descontos, multas e juros aplicáveis ​​à cobrança. Com os dados recebidos da API PIX, ele gera um QR Code Dinâmico, que depois é enviado ao usuário devedor (por exemplo, via e-mail).
+2. O devedor então escaneia o QR Code Dinâmico usando o aplicativo da sua instituição bancária.
+3. O devedor confirma as informações e agenda o pagamento para o vencimento.
+4. O parceiro Onz Finance é notificado de que a fatura foi honrada através de um serviço de notificação previamente configurado (webhook).
+
+**Caso de uso**  
+_Cobrança de taxas de serviços baseados em assinatura; e outras situações relacionadas._
+
+**Requisição**
+
+```ts
+curl --location --request PUT 'https://pix.onz.finance/cobv/c1d491df0ee64xxxcb10374e7cfd726' \
+    --header 'Content-Type: application/json' \
+    --header 'Authorization: Bearer eyJhbG...' \
+    --data {
+        "calendario": {
+            "dataDeVencimento": "2024-12-31",
+            "validadeAposVencimento": 30
+        },
+        "devedor": {
+            "logradouro": "Rua das Flores 456, Jardim Botânico, apto 401",
+            "cidade": "Rio de Janeiro",
+            "uf": "RJ",
+            "cep": "22461120",
+            "cpf": "20344948064",
+            "nome": "John Doe"
+        },
+        "valor": {
+            "original": "10.05",
+            "multa": {
+                "modalidade": "1",
+                "valorPerc": "10.00"
+            },
+            "juros": {
+                "modalidade": "2",
+                "valorPerc": "2.00"
+            },
+            "desconto": {
+                "modalidade": "1",
+                "descontoDataFixa": [
+                    {
+                        "data": "2024-11-29",
+                        "valorPerc": "1.00"
+                    }
+                ]
+            }
+        },
+        "infoAdicionais": [
+            {
+                "nome": "AVISO",
+                "valor": "Pagamento"
+            }
+        ],
+        "chave": "b8xxxd2a-b353-4475-af38-d94exxxx5e2f"
+    }
+```
+
+| Campo                                         | Obrigatório | Descrição                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| --------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **calendario.dataDeVencimento**               | Sim         | É a data, no formato 'yyyy-mm-dd', de acordo com ISO 8601. É a data de vencimento do pagamento, que pode ser pago a qualquer momento do dia. Exemplo: 2024-10-19. Atenção: Sempre que a data de vencimento cair em um final de semana ou feriado para o pagador, deve ser automaticamente prorrogada para o próximo dia útil. Todos os campos referentes a esta data (validadeAposVencimento; desconto; juros e multa) devem considerar esta prorrogação, quando aplicável.     |
+| **calendario.validadeAposVencimento**         | Não         | Este é o número de dias corridos após a **calendario.dataDeVencimento** pelo qual o pagamento pode ser feito. O valor deste campo é aplicado à data de vencimento original do pagamento, adicionando o número de dias corridos durante os quais o pagamento ainda pode ser feito após o vencimento. Atenção: Sempre que a data de validade após o vencimento cair em um final de semana ou feriado para o pagador, deve ser automaticamente prorrogada para o próximo dia útil. |
+| **devedor.logradouro**                        | Não         | Endereço do devedor                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| **devedor.cidade**                            | Não         | Nome do município do devedor                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| **devedor.uf**                                | Não         | Abreviação do estado do devedor                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| **devedor.cep**                               | Não         | Código postal do devedor                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| **devedor.cpf**                               | Não         | CPF do devedor (ver [CPF](/getting-started/assuntos-relacionados-pix#cpf)).                                                                                                                                                                                                                                                                                                                                                                                                                |
+| **devedor.cnpj**                              | Não         | CNPJ do devedor (ver [CNPJ](/getting-started/assuntos-relacionados-pix#cnpj))                                                                                                                                                                                                                                                                                                                                                                                                              |
+| **devedor.nome**                              | Não         | Nome do devedor                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| **valor.original**                            | Sim         | Valor da cobrança. Deve apresentar valores maiores que zero. Validação: `\d{1,10}\.\d{2}`                                                                                                                                                                                                                                                                                                                                                                                       |
+| **valor.multa.modalidade**                    | Não         | Indica como o valor da multa deve ser calculado.                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| **valor.multa.valorPerc**                     | Não         | Valor absoluto ou percentual a ser usado no cálculo da multa, de acordo com a modalidade escolhida. Se o campo **valor.multa.modalidade** estiver preenchido, então este campo também deve estar preenchido (ver [Cálculo do valor da multa](/getting-started/assuntos-relacionados-pix#cálculo-do-valor-da-multa)).                                                                                                                                                                          |
+| **valor.juros.modalidade**                    | Não         | Indica como o valor dos juros aplicáveis ao atraso no pagamento deve ser calculado.                                                                                                                                                                                                                                                                                                                                                                                             |
+| **valor.juros.valorPerc**                     | Não         | Valor absoluto ou percentual a ser usado no cálculo dos juros, de acordo com a modalidade escolhida. Se o campo **valor.juros.modalidade** estiver preenchido, então este campo também deve estar preenchido.                                                                                                                                                                                                                                                                   |
+| **valor.desconto.modalidade**                 | Não         | Indica como o valor do desconto deve ser calculado (ver [Métodos de cálculo do desconto](#discount-calculation-methods)).                                                                                                                                                                                                                                                                                                                                                       |
+| **valor.desconto.descontoDataFixa.data**      | Não         | É uma data, no formato 'yyyy-mm-dd', de acordo com ISO 8601. Descontos no valor da cobrança se pagos até esta data. Deve ser preenchido apenas se o campo **valor.desconto.modalidade** estiver preenchido e assumir o valor "1" ou "2". Importante: Sempre que o prazo para um desconto cair em um final de semana ou feriado para o pagador, deve ser automaticamente prorrogado para o próximo dia útil.                                                                     |
+| **valor.desconto.descontoDataFixa.valorPerc** | Não         | Valor absoluto ou percentual a ser usado no cálculo do desconto, de acordo com a modalidade de desconto escolhida. Deve ser preenchido apenas se o campo **valor.desconto.modalidade** estiver preenchido e assumir o valor "1" ou "2" (ver [cálculo do desconto](/getting-started/assuntos-relacionados-pix#calculation-of-the-discount-amount)).                                                                                                                                            |
+| **valor.desconto.valorPerc**                  | Não         | Valor absoluto ou percentual a ser usado no cálculo do desconto, de acordo com a modalidade de desconto escolhida. Deve ser preenchido apenas se o campo **valor.desconto.modalidade** estiver preenchido e assumir os valores de "3" a "6" (ver [Desconto por pagamento antecipado por dia](/getting-started/assuntos-relacionados-pix#discount-for-early-payment-per-day)).                                                                                                                 |
+| **infoAdicionais.nome**                       | Não         | Nome do campo adicional (máximo 50 caracteres)                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| **infoAdicionais.valor**                      | Não         | Dados do campo adicional (máximo 200 caracteres)                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| **chave**                                     | Sim         | Chave Pix do parceiro Onz (ver [Chave Pix](/getting-started/assuntos-relacionados-pix#pix-key))                                                                                                                                                                                                                                                                                                                                                                                               |
+
+# Métodos de cálculo da multa:
+
+| Valor | Descrição   |
+| ----- | ----------- |
+| 1     | Valor fixo  |
+| 2     | Porcentagem |
+
+# Métodos de cálculo de juros:
+
+| Valor | Descrição                          |
+| ----- | ---------------------------------- |
+| 1     | Valor (dias corridos)              |
+| 2     | Percentual por dia (dias corridos) |
+| 3     | Percentual por mês (dias corridos) |
+| 4     | Percentual por ano (dias corridos) |
+| 5     | Valor (dias úteis)                 |
+| 6     | Percentual por dia (dias úteis)    |
+| 7     | Percentual por mês (dias úteis)    |
+| 8     | Percentual por ano (dias úteis)    |
+
+# Métodos de cálculo de desconto:
+
+| Valor | Descrição                                          |
+| ----- | -------------------------------------------------- |
+| 1     | Valor fixo até a data informada                    |
+| 2     | Percentual até a data informada                    |
+| 3     | Valor para pagamento antecipado (dia corrido)      |
+| 4     | Valor para pagamento antecipado (dia útil)         |
+| 5     | Percentual para pagamento antecipado (dia corrido) |
+| 6     | Percentual para pagamento antecipado (dia útil)    |
+
+**Resposta**
+
+```ts
+{
+    "revisao": 0,
+    "loc": {
+        "id": 1425328,
+        "location": "qrcodes-h.sulcredi.coop.br/v2/v3/at/cobv/5e427b63-8046-4ba2-xxxx-4dd17aa01500",
+        "tipoCob": "cobv",
+        "criacao": "2024-05-07T13:00:01.828Z"
+    },
+    "calendario": {
+        "criacao": "2024-05-07T13:00:01Z",
+        "dataDeVencimento": "2024-12-31",
+        "validadeAposVencimento": 30
+    },
+    "devedor": {
+        "cpf": "20344948064",
+        "nome": "John Doe"
+    },
+    "valor": {
+        "original": "10.05",
+        "abatimento": {},
+        "desconto": {
+            "modalidade": 1,
+            "descontoDataFixa": [
+                {
+                    "data": "2024-11-29T00:00:00.000Z",
+                    "valorPerc": "1.00"
+                }
+            ]
+        },
+        "juros": {
+            "valorPerc": "2.00",
+            "modalidade": 2
+        },
+        "multa": {
+            "valorPerc": "10.00",
+            "modalidade": 1
+        }
+    },
+    "chave": "b8xxxd2a-b353-4475-af38-d94exxxx5e2f",
+    "txid": "c1d491df0ee64xxxcb10374e7cfd726",
+    "status": "ATIVA",
+    "infoAdicionais": [
+        {
+            "nome": "AVISO",
+            "valor": "Pagamento"
+        }
+    ],
+    "pixCopiaECola": "00020126940014br.gov.bcb.pix2572qrcodes-h.sulcredi.coop.br/v2/v3/at/1ecb1147-ac25-4454-bbb9-bcexxxx03ffa52040000530398xxxxxBR5919MATH JOES6014SAO PAULO 62070503***63043C7D"
+}
+```
