@@ -2172,8 +2172,12 @@ components:
           format: date
     InvoiceCreateRequest:
       type: object
+      oneOf:
+        - required:
+            - customerId
+        - required:
+            - payer
       required:
-        - customerId
         - dueDate
         - amount
         - type
@@ -2181,6 +2185,11 @@ components:
         customerId:
           type: integer
           format: int64
+          description: Envie `customerId` ou `payer`, nunca os dois.
+        payer:
+          allOf:
+            - $ref: "#/components/schemas/InvoiceCustomerRequest"
+          description: Dados do pagador. Envie `payer` ou `customerId`, nunca os dois.
         paymentMethod:
           $ref: "#/components/schemas/InvoicePaymentMethod"
           default: PIX
@@ -2200,6 +2209,11 @@ components:
           exclusiveMinimum: 0
         type:
           $ref: "#/components/schemas/InvoiceType"
+        emit:
+          type: boolean
+          default: false
+          description: |
+            Registra na mesma chamada uma cobrança `SCHEDULED` via `BOLETO` ou `PIX_BOLETO`.
         description:
           type: string
           maxLength: 255
@@ -7629,8 +7643,11 @@ paths:
       description: |
         Cria uma invoice para um pagador da conta autenticada.
         Header `x-idempotency-key` obrigatório (1–50 caracteres).
+        Envie `customerId` ou `payer`, nunca os dois.
         `pixKey` é obrigatória quando `paymentMethod` inclui Pix.
         `IMMEDIATE` registra na criação; `SCHEDULED` cria em `DRAFT`.
+        Em cobranças `SCHEDULED` via `BOLETO` ou `PIX_BOLETO`, `emit: true`
+        registra a cobrança na mesma chamada.
       operationId: postInvoice
       parameters:
         - $ref: "#/components/parameters/XAccountId"
@@ -7727,6 +7744,49 @@ paths:
           schema:
             type: string
             maxLength: 255
+        - name: status
+          in: query
+          description: |
+            Filtra pelo status da cobrança. `WRITTEN_OFF` representa cobranças
+            pagas por outro canal.
+          schema:
+            type: string
+            enum:
+              - DRAFT
+              - REGISTERING
+              - PENDING
+              - OVERDUE
+              - COMPLETED
+              - CANCELED
+              - FAILED
+              - WRITTEN_OFF
+        - name: dateField
+          in: query
+          description: Campo usado pelo filtro de período.
+          schema:
+            type: string
+            enum:
+              - CREATED_AT
+              - DUE_DATE
+              - PAID_AT
+            default: CREATED_AT
+        - name: startDate
+          in: query
+          description: |
+            Início inclusivo do período. Envie junto com `endDate`.
+            Aceita `YYYY-MM-DD` ou ISO 8601 com `Z`/offset. Uma data sem
+            horário começa à meia-noite em `America/Sao_Paulo`.
+          schema:
+            type: string
+        - name: endDate
+          in: query
+          description: |
+            Fim inclusivo do período, igual ou posterior a `startDate`.
+            Envie junto com `startDate`. Aceita `YYYY-MM-DD` ou ISO 8601 com
+            `Z`/offset. Uma data sem horário termina no fim do dia em
+            `America/Sao_Paulo`.
+          schema:
+            type: string
       responses:
         "200":
           description: Sucesso
@@ -7913,6 +7973,75 @@ paths:
       security:
         - OAuth2:
             - invoices.write
+  /invoices/{invoiceId}/pdf:
+    get:
+      tags:
+        - Cobranças
+      summary: Obter PDF da cobrança.
+      description: |
+        Retorna o documento da cobrança em PDF. A cobrança precisa ter um QR
+        Code Pix ou boleto registrado e não pode estar cancelada ou paga.
+      operationId: getInvoicePdf
+      parameters:
+        - $ref: "#/components/parameters/XAccountId"
+        - name: invoiceId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: PDF da cobrança
+          headers:
+            Content-Disposition:
+              description: Nome sugerido no formato `inline; filename="cobranca-{invoiceId}.pdf"`.
+              schema:
+                type: string
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        "400":
+          description: Identificador inválido
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorInvoiceApi"
+        "401":
+          description: Não autorizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorInvoiceApi"
+        "403":
+          description: Módulo de cobranças desligado ou acesso negado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorInvoiceApi"
+        "404":
+          description: Cobrança não encontrada na conta
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorInvoiceApi"
+        "422":
+          description: Cobrança ainda sem QR Code ou boleto registrado, cancelada ou já paga
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorInvoiceApi"
+        "503":
+          description: PDF temporariamente indisponível
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorInvoiceApi"
+      security:
+        - OAuth2:
+            - invoices.read
   /invoices/{invoiceId}/emit:
     post:
       tags:

@@ -16,13 +16,26 @@ curl --location 'https://secureapi.onz.finance/api/v2/invoices' \
   --header 'Content-Type: application/json' \
   --header 'x-idempotency-key: invoice-2026-0001' \
   --data '{
-    "customerId": 42,
+    "payer": {
+      "name": "Maria Silva",
+      "document": "12345678901",
+      "email": "maria@exemplo.com",
+      "address": {
+        "address": "Rua das Flores",
+        "number": "100",
+        "district": "Centro",
+        "city": "São Paulo",
+        "zipCode": "01310100",
+        "uf": "SP"
+      }
+    },
     "paymentMethod": "PIX_BOLETO",
     "pixKey": "12345678901",
     "dueDate": "2026-08-20",
     "daysToPay": 5,
     "amount": 150.9,
     "type": "SCHEDULED",
+    "emit": true,
     "description": "Mensalidade agosto",
     "interest": { "type": 3, "amount": 1 },
     "lateFee": { "type": 2, "amount": 2 },
@@ -36,13 +49,15 @@ curl --location 'https://secureapi.onz.finance/api/v2/invoices' \
 
 | Campo | Obrigatório | Descrição |
 | --- | --- | --- |
-| `customerId` | Sim | Id retornado em `POST /customers` |
+| `customerId` | Condicional | Id retornado em `POST /customers`. Envie `customerId` ou `payer`, nunca os dois. |
+| `payer` | Condicional | Dados do pagador. O cadastro é criado ou atualizado pelo documento. Envie `payer` ou `customerId`, nunca os dois. |
 | `paymentMethod` | Não | `PIX` (padrão), `BOLETO` ou `PIX_BOLETO` |
 | `pixKey` | Se o método inclui Pix | Chave Pix da conta recebedora |
 | `dueDate` | Sim | Vencimento `YYYY-MM-DD` (America/Sao_Paulo) |
 | `daysToPay` | Não | Validade após o vencimento. Padrão `0`. Zerado em `IMMEDIATE`. |
 | `amount` | Sim | Valor positivo em reais |
 | `type` | Sim | `IMMEDIATE` ou `SCHEDULED` |
+| `emit` | Não | Registra na mesma chamada uma cobrança `SCHEDULED` via `BOLETO` ou `PIX_BOLETO`. Padrão `false`. |
 | `description` | Não | Até 255 caracteres |
 | `emailTo` | Não | Destinatário do e-mail da cobrança |
 | `sendEmail` | Não | Enviar e-mail ao criar/emitir. Padrão `false`. |
@@ -88,16 +103,49 @@ A resposta `201` inclui `id`, `status`, `txId`, `brCode` (Pix) e, após o regist
 
 **Endpoint:** `POST /invoices/{invoiceId}/emit`
 
-Só faturas `SCHEDULED` em `DRAFT`. Responde a cobrança já registrada (`PENDING` ou `REGISTERING`).
+Só faturas `SCHEDULED` em `DRAFT`. Responde a cobrança já registrada (`PENDING` ou `REGISTERING`). Para emitir na criação, envie `emit: true` em `POST /invoices`.
 
 ## Listar e detalhar
 
-| Método | Endpoint | Query |
-| --- | --- | --- |
-| `GET` | `/invoices` | `page`, `perPage` (máx. 100), `filter` (descrição ou nome do pagador) |
-| `GET` | `/invoices/{invoiceId}` | — |
+**Endpoints:** `GET /invoices` e `GET /invoices/{invoiceId}`
+
+```bash
+curl --location \
+  'https://secureapi.onz.finance/api/v2/invoices?status=PENDING&dateField=DUE_DATE&startDate=2026-08-01&endDate=2026-08-31' \
+  --header 'Authorization: Bearer <access_token>'
+```
+
+| Query | Descrição |
+| --- | --- |
+| `page` | Página. Padrão `1`. |
+| `perPage` | Itens por página. Padrão `20`, máximo `100`. |
+| `filter` | Busca por descrição ou nome do pagador. |
+| `status` | `DRAFT`, `REGISTERING`, `PENDING`, `OVERDUE`, `COMPLETED`, `CANCELED`, `FAILED` ou `WRITTEN_OFF`. `WRITTEN_OFF` representa cobranças pagas por outro canal. |
+| `dateField` | Campo do período: `CREATED_AT` (padrão), `DUE_DATE` ou `PAID_AT`. |
+| `startDate` | Início inclusivo. Envie junto com `endDate`. |
+| `endDate` | Fim inclusivo, igual ou posterior a `startDate`. |
+
+As datas aceitam `YYYY-MM-DD` ou ISO 8601 com `Z`/offset. Uma data sem horário cobre o dia inteiro em `America/Sao_Paulo`.
 
 A listagem devolve `{ meta, data }`. `meta` tem `total`, `perPage`, `currentPage`, `firstPage`, `lastPage`, `nextPage` e `prevPage`.
+
+## Obter PDF
+
+**Endpoint:** `GET /invoices/{invoiceId}/pdf`
+
+```bash
+curl --location 'https://secureapi.onz.finance/api/v2/invoices/42/pdf' \
+  --header 'Authorization: Bearer <access_token>' \
+  --output cobranca-42.pdf
+```
+
+A resposta `200` contém `application/pdf` e usa `Content-Disposition: inline`. O endpoint exige o scope `invoices.read`.
+
+| HTTP | Quando |
+| --- | --- |
+| `404` | Cobrança inexistente na conta. |
+| `422` | Cobrança ainda sem QR Code ou boleto registrado, cancelada ou já paga. |
+| `503` | PDF temporariamente indisponível. Faça retry com backoff. |
 
 ## Cancelar
 

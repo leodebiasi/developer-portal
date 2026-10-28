@@ -21,10 +21,10 @@ Credencial BaaS (`clientId` com prefixo `baas_`) opera contas filhas. Envie `x-a
 
 ## Fluxo
 
-1. Cadastre o pagador em `POST /customers`.
+1. Identifique o pagador com `customerId` ou envie os dados em `payer`. Se usar `payer`, não é necessário chamar `POST /customers` antes.
 2. Crie a cobrança em `POST /invoices` com `x-idempotency-key`.
-3. Se `type` for `SCHEDULED`, emita o rascunho em `POST /invoices/{invoiceId}/emit`. Cobrança `IMMEDIATE` já sai registrada.
-4. Entregue ao pagador o `brCode` (Pix copia e cola) e/ou a linha digitável do boleto.
+3. Para boleto ou híbrida `SCHEDULED`, envie `emit: true` para registrar na criação ou emita depois com `POST /invoices/{invoiceId}/emit`. Cobrança `IMMEDIATE` já sai registrada.
+4. Entregue ao pagador o `brCode` (Pix copia e cola), a linha digitável e/ou o PDF obtido em `GET /invoices/{invoiceId}/pdf`.
 5. Receba os eventos no [webhook `INVOICE`](/contas/invoices/webhook).
 6. Consulte status em `GET /invoices/{invoiceId}` ou cancele em `DELETE /invoices/{invoiceId}`.
 
@@ -43,7 +43,7 @@ Linha digitável e código de barras só aparecem depois que a Núclea confirma 
 | `type` | Comportamento |
 | --- | --- |
 | `IMMEDIATE` | Registra na criação. Status inicial `PENDING` (Pix) ou `REGISTERING` (boleto). Juros, multa e `daysToPay` são ignorados (zerados). |
-| `SCHEDULED` | Cria em `DRAFT`. Use `POST /invoices/{invoiceId}/emit` para registrar. `dueDate` não pode ser anterior a hoje (America/Sao_Paulo). |
+| `SCHEDULED` | Cria em `DRAFT`. Para boleto ou híbrida, use `emit: true` na criação ou `POST /invoices/{invoiceId}/emit` depois. `dueDate` não pode ser anterior a hoje (America/Sao_Paulo). |
 
 `daysToPay` é a validade após o vencimento (Pix `validadeAposVencimento` / limite do boleto). Datas `YYYY-MM-DD` são interpretadas no fuso `America/Sao_Paulo`.
 
@@ -77,5 +77,5 @@ Os endpoints `/invoices` e `/customers` respondem no formato do Atlas:
 | `403` | Módulo de cobranças desligado na conta |
 | `404` | Invoice ou pagador inexistente nesta conta |
 | `409` | `x-idempotency-key` reutilizada com outro payload |
-| `422` | Juros em dias úteis (tipos 5–8) em boleto |
-| `503` | Autenticação da API de Contas indisponível |
+| `422` | Regra de negócio, como juros em dias úteis (tipos 5–8) em boleto ou PDF indisponível para o estado da cobrança |
+| `503` | Autenticação da API de Contas ou geração do PDF temporariamente indisponível |

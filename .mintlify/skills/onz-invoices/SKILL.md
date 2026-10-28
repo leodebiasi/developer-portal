@@ -12,13 +12,18 @@ Host: `https://secureapi.onz.finance/api/v2`.
 ## Fluxo
 
 1. mTLS + token (`/contas/autenticacao-api-contas`).
-2. Cadastre o pagador em `/customers` (`/contas/invoices/pagadores`).
+2. Informe exatamente uma opção no pedido: `customerId` de `/customers` ou os dados do pagador em `payer`.
 3. `POST /invoices` com `type`:
    - `IMMEDIATE` — já registra.
-   - `SCHEDULED` — cria `DRAFT`; emita com `POST /invoices/{invoiceId}/emit`. `dueDate` não pode ser anterior a hoje.
+   - `SCHEDULED` — cria `DRAFT`; para boleto ou híbrida, envie `emit: true` ou emita depois com `POST /invoices/{invoiceId}/emit`. `dueDate` não pode ser anterior a hoje.
 4. Entregue o payload (QR / linha digitável) ao pagador.
-5. Acompanhe `GET /invoices/{invoiceId}` ou webhook `INVOICE`.
-6. Cancele com `DELETE /invoices/{invoiceId}`.
+5. Obtenha o documento com `GET /invoices/{invoiceId}/pdf` quando a cobrança estiver disponível para impressão.
+6. Acompanhe `GET /invoices/{invoiceId}`, `GET /invoices` com filtros de status/período ou webhook `INVOICE`.
+7. Cancele com `DELETE /invoices/{invoiceId}`.
+
+## Listagem
+
+`GET /invoices` aceita `status`, `dateField` (`CREATED_AT`, `DUE_DATE` ou `PAID_AT`), `startDate` e `endDate`. As duas datas são obrigatórias em conjunto. `WRITTEN_OFF` filtra cobranças pagas por outro canal.
 
 ## Webhook
 
